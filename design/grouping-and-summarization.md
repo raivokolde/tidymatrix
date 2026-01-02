@@ -442,58 +442,100 @@ annotation_tm %>%
 - Use efficient matrix operations (colMeans, rowMeans when possible)
 - Consider sparse matrix support in future
 
-## Alternative: count() and tally()
+## count() and tally()
 
-For simple counting without matrix aggregation:
+Counting operations that maintain tidymatrix structure:
 
 ```r
-# count() creates frequency table, discards matrix
+# count() creates frequency table with aggregated matrix
 tm %>%
   activate(rows) %>%
   count(group, gender)
-# Returns: tibble with counts, no matrix
+# Returns: tidymatrix with counts in metadata, matrix aggregated by default rules
 
-# tally() counts within groups, keeps matrix
+# For non-numeric matrices, must specify aggregation
+logical_tm %>%
+  activate(rows) %>%
+  count(group, .matrix_fn = any)
+# Returns: tidymatrix with counts and aggregated logical matrix
+
+# tally() counts within existing groups
 tm %>%
   activate(rows) %>%
   group_by(group) %>%
   tally()
-# Returns: tidymatrix with aggregated matrix (using default mean)
+# Returns: tidymatrix with aggregated matrix (using default mean for numeric)
 ```
 
 ## Design Decisions Summary
 
-### ✓ Resolved
-- **Non-numeric matrices:** No default aggregation. Require explicit `.matrix_fn` with helpful error messages.
-- **Numeric matrices:** Use `mean()` as default, allow override.
+### ✓ Finalized Decisions
 
-### Open Questions
+1. **Non-numeric matrices:** No default aggregation. Require explicit `.matrix_fn` with helpful error messages.
+   - Rationale: No sensible default for logical/character/factor data
 
-1. **Does `mean()` as default make sense for numeric matrices in your use cases?**
-   - Gene expression: Yes (average replicates)
-   - Survey data: Yes (average responses)
-   - Other domains?
+2. **Numeric matrices:** Use `mean()` as default, allow override.
+   - Rationale: Matches common use cases (averaging replicates, responses, etc.)
 
-2. **Should we support different aggregation per matrix column/row?**
-   - Current plan: One function for entire matrix
-   - Alternative: Allow specifying different functions for different columns
-   - Trade-off: Simplicity vs. flexibility
+3. **Matrix aggregation scope:** One function applies to entire matrix.
+   - Rationale: Keep it simple. Can add per-column support later if needed.
+   - User provides single function via `.matrix_fn` parameter
 
-3. **Should `count()` return a tibble or tidymatrix?**
-   - Option A: Return simple tibble (no matrix) - matches dplyr behavior
-   - Option B: Return tidymatrix with aggregated matrix
-   - Recommendation: Return tibble (simpler, matches expectations)
+4. **count() return type:** Return tidymatrix (not tibble).
+   - Rationale: Follow tidy principle - same data type in, same data type out
+   - Matrix will be aggregated using default rules (mean for numeric, required .matrix_fn for non-numeric)
 
-4. **Any aggregation functions that should be built-in helpers?**
-   - Currently: User provides any function via `.matrix_fn`
-   - Could add: `collapse_rows()`, `collapse_columns()` helpers
-   - Or special functions: `summarize_mean()`, `summarize_median()`, etc.
+5. **Helper functions:** Use `.matrix_fn` parameter only. No special helpers for now.
+   - Rationale: Single clear interface. Recommendations in error messages guide users.
+   - Critical: Helpful error messages are essential since this is a key analysis step users might overlook
 
-## Next Steps
+## Implementation Plan
 
-1. Discuss and refine this plan
-2. Implement `group_by()` to create grouped_tidymatrix class
-3. Implement `summarize()` for grouped objects
-4. Add comprehensive tests for various aggregation scenarios
-5. Document with clear examples
-6. Consider adding helper functions like `collapse_rows()`, `collapse_columns()`
+### Phase 1: Core Grouping
+1. Implement `group_by.tidymatrix()`
+   - Create `grouped_tidymatrix` S3 class
+   - Store grouping variables and active context
+   - Preserve all tidymatrix data
+
+2. Implement `ungroup.grouped_tidymatrix()`
+   - Remove grouping, return regular tidymatrix
+
+3. Update `print.grouped_tidymatrix()`
+   - Show grouping information
+   - Display group count
+
+### Phase 2: Summarization
+4. Implement `summarize.grouped_tidymatrix()`
+   - Detect matrix type (numeric vs. non-numeric)
+   - Use mean() default for numeric, require .matrix_fn for non-numeric
+   - Helpful error messages with suggestions
+   - Support .matrix_args for passing additional arguments (na.rm, etc.)
+   - Aggregate matrix rows/columns based on active context
+   - Return ungrouped tidymatrix
+
+5. Implement `count.tidymatrix()` and `tally.grouped_tidymatrix()`
+   - Return tidymatrix (not tibble)
+   - Follow same aggregation rules as summarize
+
+### Phase 3: Testing
+6. Comprehensive test suite:
+   - Numeric matrix aggregation (mean, median, sum, etc.)
+   - Non-numeric matrix with error checking
+   - Logical matrix (any, all, first)
+   - Character matrix (first, mode function)
+   - Multiple grouping variables
+   - Empty groups
+   - NA handling
+   - count() and tally()
+   - Complex chained operations
+
+### Phase 4: Documentation
+7. Document all functions with examples
+8. Add vignette on grouping and summarization
+9. Include real-world examples (gene expression, survey data)
+
+### Future Enhancements (not in initial implementation)
+- Per-column matrix aggregation
+- Helper functions like `collapse_rows()`, `collapse_columns()`
+- Sparse matrix support
+- Parallel aggregation for large matrices
