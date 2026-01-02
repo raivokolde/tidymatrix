@@ -1,0 +1,17 @@
+Package: tidymatrix
+Title: Tidyverse-Style Operations on Matrices with Row and Column Metadata
+Version: 0.0.0.9000
+Authors@R:
+    person("Raivo", "Kolde", , "rkolde@gmail.com", role = c("aut", "cre"))
+Description: Provides a unified data structure for matrices with associated row
+    and column metadata, enabling tidyverse-style data manipulation. Inspired by
+    tidygraph's approach, users can activate rows, columns, or the matrix itself
+    to perform operations using familiar dplyr verbs while maintaining
+    consistency across all components.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports: 
+    dplyr,
+    magrittr
