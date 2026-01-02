@@ -24,16 +24,20 @@ filter.tidymatrix <- function(.data, ..., .preserve = FALSE) {
   }
 
   if (.data$active == "rows") {
-    # Filter row_data
+    # Add temporary index to track original positions
+    .data$row_data$.tidymatrix_index <- seq_len(nrow(.data$row_data))
     filtered_rows <- dplyr::filter(.data$row_data, ...)
-    row_indices <- as.integer(rownames(filtered_rows))
+    row_indices <- filtered_rows$.tidymatrix_index
+    filtered_rows$.tidymatrix_index <- NULL
 
     .data$row_data <- filtered_rows
     .data$matrix <- .data$matrix[row_indices, , drop = FALSE]
   } else if (.data$active == "columns") {
-    # Filter col_data
+    # Add temporary index to track original positions
+    .data$col_data$.tidymatrix_index <- seq_len(nrow(.data$col_data))
     filtered_cols <- dplyr::filter(.data$col_data, ...)
-    col_indices <- as.integer(rownames(filtered_cols))
+    col_indices <- filtered_cols$.tidymatrix_index
+    filtered_cols$.tidymatrix_index <- NULL
 
     .data$col_data <- filtered_cols
     .data$matrix <- .data$matrix[, col_indices, drop = FALSE]
