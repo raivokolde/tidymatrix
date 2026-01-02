@@ -227,24 +227,27 @@ tm <- tm %>%
 
 # - Adds PC1-PC5 to col_data
 # - Stores full prcomp object as attribute
-# - Can access with get_analysis(tm, "main_pca")
 
-# Get stored analyses
-analyses <- get_analyses(tm)
-names(analyses)
+# Get full analysis object
+pca_obj <- get_analysis(tm, "main_pca")
+# Returns standard prcomp object - use it however you want!
+
+# Standard prcomp methods work
+summary(pca_obj)
+plot(pca_obj$sdev)              # Scree plot
+biplot(pca_obj)                 # Biplot
+pca_obj$rotation                # Loadings
+pca_obj$sdev^2 / sum(pca_obj$sdev^2)  # Variance explained
+
+# List all stored analyses
+list_analyses(tm)
 # [1] "main_pca"
-
-pca_obj <- analyses$main_pca
-plot(pca_obj$sdev)  # Variance explained
-
-# Extract loadings with metadata
-loadings_tm <- get_loadings(tm, "main_pca")  # Returns tidymatrix!
-# Matrix: genes × PCs
-# row_data: original gene metadata
-# col_data: PC number, variance explained per PC
 
 # Remove analysis if no longer needed
 tm <- remove_analysis(tm, "main_pca")
+
+# Or remove all
+tm <- remove_all_analyses(tm)
 ```
 
 **Pros:**
