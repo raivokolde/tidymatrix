@@ -416,27 +416,338 @@ loadings %>%
   slice_head(n = 20)  # Top 20 genes driving PC1
 ```
 
+## Analysis Invalidation Problem
+
+**The Challenge:** What happens when data is modified after analysis?
+
+```r
+# Compute PCA on 1000 genes
+tm <- expr_tm %>%
+  activate(rows) %>%
+  compute_pca(name = "gene_pca")  # Stores full PCA object
+
+# Later: filter to top 500 genes
+tm <- tm %>%
+  activate(rows) %>%
+  filter(variance > threshold)  # Now only 500 genes
+
+# Problem: Stored PCA object is based on 1000 genes!
+pca_obj <- get_analysis(tm, "gene_pca")  # Returns outdated analysis
+```
+
+This could lead to:
+- Misleading results
+- Reproducibility issues
+- Confusion about what data was analyzed
+
+### Solution 1: Auto-Remove on Modification (Simple & Safe)
+
+**Approach:** Remove all stored analyses whenever data is modified.
+
+```r
+tm <- expr_tm %>%
+  activate(columns) %>%
+  compute_pca(name = "sample_pca")  # Stores analysis
+
+list_analyses(tm)
+# [1] "sample_pca"
+
+# Any modification removes stored analyses
+tm <- tm %>%
+  activate(rows) %>%
+  filter(mean_expr > 1)
+
+list_analyses(tm)
+# character(0)  # Analyses removed!
+
+# Warning message:
+# Removed 1 stored analysis due to data modification: sample_pca
+# Metadata columns (PC1, PC2, ...) are preserved.
+```
+
+**What gets removed vs. kept:**
+- ✗ Full analysis objects (prcomp, hclust, etc.) - **REMOVED**
+- ✓ Metadata columns (PC1, PC2, cluster) - **KEPT**
+- Rationale: Columns are just data, objects represent relationships
+
+**Operations that trigger removal:**
+- `filter()` on active component
+- `slice()` on active component
+- `arrange()` - maybe keep? (just reordering)
+- `mutate()` - keep (not changing matrix)
+- `select()` on metadata - keep (not changing matrix)
+- Any matrix transformation (scaling, normalization)
+
+**Pros:**
+- Simple to implement
+- Always safe - no stale analyses
+- Clear mental model
+
+**Cons:**
+- Potentially too aggressive
+- Might remove analyses even when safe
+- Need to re-run analysis if needed later
+
+---
+
+### Solution 2: Smart Invalidation (Complex)
+
+**Approach:** Track which analyses are affected by which operations.
+
+```r
+# Each analysis tracks what it depends on
+attr(tm, "analyses")$sample_pca$depends_on <- list(
+  active = "columns",
+  row_ids = rownames(tm$matrix),
+  col_ids = rownames(tm$col_data),
+  matrix_hash = digest(tm$matrix)
+)
+
+# Filter rows - doesn't affect column-based PCA
+tm <- tm %>%
+  activate(rows) %>%
+  filter(mean_expr > 1)
+
+list_analyses(tm)
+# [1] "sample_pca"  # Still present! Rows don't affect column PCA
+
+# But filter columns - now it's affected
+tm <- tm %>%
+  activate(columns) %>%
+  filter(batch == 1)
+
+list_analyses(tm)
+# character(0)  # Removed because columns changed
+```
+
+**Invalidation rules:**
+- Row-based analysis (gene clustering): invalidated by row operations
+- Column-based analysis (sample PCA): invalidated by column operations
+- Matrix-based analysis: invalidated by any change
+
+**Pros:**
+- More intelligent - keeps analyses when safe
+- Better for complex workflows
+
+**Cons:**
+- Complex to implement correctly
+- Hard to reason about edge cases
+- What about matrix transformations that preserve structure?
+
+---
+
+### Solution 3: Explicit Lifecycle with Warnings (Recommended)
+
+**Approach:** Track analysis validity, warn on access, let user decide.
+
+```r
+# Compute analysis - marked as "valid"
+tm <- expr_tm %>%
+  activate(columns) %>%
+  compute_pca(name = "sample_pca")
+
+attr(tm, "analyses")$sample_pca$valid <- TRUE
+attr(tm, "analyses")$sample_pca$computed_on <- Sys.time()
+attr(tm, "analyses")$sample_pca$n_rows <- nrow(tm$matrix)
+attr(tm, "analyses")$sample_pca$n_cols <- ncol(tm$matrix)
+
+# Modify data - mark as "stale" but keep
+tm <- tm %>%
+  activate(columns) %>%
+  filter(batch == 1)
+
+attr(tm, "analyses")$sample_pca$valid <- FALSE
+attr(tm, "analyses")$sample_pca$invalidated_on <- Sys.time()
+attr(tm, "analyses")$sample_pca$invalidated_by <- "filter(columns)"
+
+# Try to access stale analysis - warning
+pca_obj <- get_analysis(tm, "sample_pca")
+# Warning: Analysis 'sample_pca' was computed on different data:
+#   - Original: 1000 rows × 50 columns
+#   - Current:  1000 rows × 30 columns
+#   - Invalidated by: filter(columns) on 2025-01-02
+#
+# Use recompute_analysis(tm, "sample_pca") to update.
+
+# User can explicitly remove or recompute
+tm <- remove_analysis(tm, "sample_pca")
+tm <- recompute_analysis(tm, "sample_pca")  # Re-runs with same parameters
+```
+
+**Additional features:**
+```r
+# Check validity
+check_analyses(tm)
+# Analysis 'sample_pca': STALE (computed on 50 columns, now 30)
+# Analysis 'gene_clusters': VALID
+
+# Remove all stale analyses
+tm <- remove_stale_analyses(tm)
+
+# Or remove all analyses
+tm <- remove_all_analyses(tm)
+```
+
+**Pros:**
+- User stays in control
+- Clear warnings prevent silent errors
+- Can recompute if desired
+- Preserves analysis history
+
+**Cons:**
+- More complex user experience
+- Users might ignore warnings
+- Need good documentation
+
+---
+
+### Solution 4: Snapshot Approach (Alternative)
+
+**Approach:** Store snapshot of data state with each analysis.
+
+```r
+# Analysis stores minimal snapshot
+attr(tm, "analyses")$sample_pca$snapshot <- list(
+  row_names = rownames(tm$matrix),
+  col_names = rownames(tm$col_data),
+  matrix_dim = dim(tm$matrix)
+)
+
+# When accessing, check if current state matches snapshot
+pca_obj <- get_analysis(tm, "sample_pca")
+# Automatically checks if dimensions/names match
+# Warns if mismatch, shows what changed
+```
+
+---
+
+### Solution 5: Keep Columns, Remove Objects (Hybrid - Simple)
+
+**Approach:** Metadata columns are permanent, analysis objects are temporary.
+
+```r
+tm <- expr_tm %>%
+  activate(columns) %>%
+  compute_pca(name = "sample_pca")
+
+# This creates:
+# 1. PC1, PC2, ... columns in col_data (PERMANENT)
+# 2. Full prcomp object as attribute (TEMPORARY)
+
+# Filter data
+tm <- tm %>%
+  activate(rows) %>%
+  filter(mean_expr > 1)
+
+# Result:
+# - PC1, PC2 columns still exist (they're just data)
+# - prcomp object removed (would be misleading)
+# - User sees: "Removed stored analysis 'sample_pca' (metadata columns preserved)"
+
+# If you need the full object again:
+tm <- recompute_pca(tm, name = "sample_pca",
+                    using_columns = c("PC1", "PC2", ...))
+# Or re-run from scratch
+```
+
+**Philosophy:**
+- Metadata columns = data (keep them)
+- Analysis objects = relationships in data (remove when data changes)
+
+**Pros:**
+- Clear separation
+- Safe default
+- Metadata columns remain useful even if object is gone
+
+**Cons:**
+- Metadata columns might be misleading without context
+- Can't access variance explained, loadings, etc.
+
+---
+
+## Recommended Approach: Solution 3 + 5 Combined
+
+**Default behavior** (Solution 5):
+- Remove analysis objects on data modification
+- Keep metadata columns (they're just data)
+- Clear warning about what was removed
+
+**Advanced features** (Solution 3):
+- `preserve_analyses = TRUE` option to keep objects but mark as stale
+- `get_analysis()` warns if stale
+- `recompute_analysis()` to update
+- `check_analyses()` to see status
+
+```r
+# Default: removes objects, keeps columns
+tm <- expr_tm %>%
+  compute_pca(name = "pca") %>%
+  filter(mean_expr > 1)
+# Warning: Removed stored analysis 'pca' (columns PC1, PC2, ... preserved)
+
+# Preserve objects (advanced)
+tm <- expr_tm %>%
+  compute_pca(name = "pca") %>%
+  filter(mean_expr > 1, preserve_analyses = TRUE)
+# Warning: Analysis 'pca' may be stale (data modified)
+
+# Check and recompute
+check_analyses(tm)
+tm <- recompute_analysis(tm, "pca")
+```
+
+---
+
+## Implementation Guidelines
+
+### Operations that invalidate analyses:
+
+**Always invalidate:**
+- `filter()` on active component
+- `slice*()` on active component
+- Matrix transformations (if we add them)
+- `summarize()` (completely different data)
+
+**Never invalidate:**
+- `mutate()` on metadata (just adding columns)
+- `select()` on metadata (just choosing columns)
+- `rename()` on metadata
+- `relocate()` on metadata
+
+**Maybe invalidate (user choice):**
+- `arrange()` - reorders but doesn't remove
+  - Row clustering might care about order
+  - PCA probably doesn't care
+  - Default: keep objects, mark as "reordered"
+
+### User control:
+
+```r
+# Globally set policy
+options(tidymatrix.analysis_policy = "remove")  # default
+options(tidymatrix.analysis_policy = "warn")    # keep but warn
+options(tidymatrix.analysis_policy = "keep")    # keep silently (dangerous!)
+
+# Per-operation override
+tm %>% filter(..., preserve_analyses = TRUE)
+```
+
 ## Questions for Discussion
 
-1. **Which option appeals to you most?** (1, 2, 3, or 4)
+1. **Which solution appeals to you most?**
+   - Solution 1 (always remove)?
+   - Solution 3 (keep but warn)?
+   - Solution 5 (remove objects, keep columns)?
+   - Combined approach?
 
-2. **Storage priority:**
-   - Keep it simple (just metadata columns)?
-   - Store full analysis objects?
+2. **Should `arrange()` invalidate analyses?**
+   - It changes order but not content
+   - Might matter for some analyses, not others
 
-3. **Multiple analyses:**
-   - Do you often need to compare multiple clusterings/PCAs?
-   - If yes, how do you currently handle this?
+3. **Metadata columns after filtering:**
+   - Keep PC1, PC2 even though underlying PCA object is gone?
+   - Or remove them too to avoid confusion?
 
-4. **Visualization priority:**
-   - Is heatmap + dendrogram the main need?
-   - Or also PCA plots, scatter plots, etc.?
-
-5. **Analysis types:**
-   - Which analyses are most critical for your work?
-   - PCA, hierarchical clustering, k-means, UMAP, t-SNE?
-   - Any others (NMF, ICA, etc.)?
-
-6. **Real-world workflow:**
-   - Can you describe a typical analysis pipeline?
-   - This will help us design the right API
+4. **Recompute functionality:**
+   - Should we auto-recompute if user tries to access stale analysis?
+   - Or just warn and let them explicitly recompute?
