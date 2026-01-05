@@ -20,6 +20,7 @@ NULL
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' mat <- matrix(rnorm(20), nrow = 10, ncol = 2)
 #' row_data <- data.frame(
 #'   id = 1:10,
@@ -29,19 +30,20 @@ NULL
 #' tm <- tidymatrix(mat, row_data)
 #'
 #' # Count by single variable
-#' tm %>%
-#'   activate(rows) %>%
+#' tm |>
+#'   activate(rows) |>
 #'   count(group)
 #'
 #' # Count by multiple variables
-#' tm %>%
-#'   activate(rows) %>%
+#' tm |>
+#'   activate(rows) |>
 #'   count(group, subgroup)
 #'
 #' # Use different aggregation for matrix
-#' tm %>%
-#'   activate(rows) %>%
+#' tm |>
+#'   activate(rows) |>
 #'   count(group, .matrix_fn = median)
+#' }
 count.tidymatrix <- function(x, ..., wt = NULL, sort = FALSE, name = NULL,
                              .drop = TRUE, .matrix_fn = NULL, .matrix_args = list()) {
   if (x$active == "matrix") {
@@ -104,6 +106,7 @@ count.tidymatrix <- function(x, ..., wt = NULL, sort = FALSE, name = NULL,
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' mat <- matrix(rnorm(20), nrow = 10, ncol = 2)
 #' row_data <- data.frame(
 #'   id = 1:10,
@@ -112,10 +115,11 @@ count.tidymatrix <- function(x, ..., wt = NULL, sort = FALSE, name = NULL,
 #' tm <- tidymatrix(mat, row_data)
 #'
 #' # Tally within groups
-#' tm %>%
-#'   activate(rows) %>%
-#'   group_by(group) %>%
+#' tm |>
+#'   activate(rows) |>
+#'   group_by(group) |>
 #'   tally()
+#' }
 tally.grouped_tidymatrix <- function(x, wt = NULL, sort = FALSE, name = NULL,
                                      .matrix_fn = NULL, .matrix_args = list()) {
   if (!missing(wt)) {

@@ -735,22 +735,61 @@ options(tidymatrix.analysis_policy = "keep")    # keep silently (dangerous!)
 tm %>% filter(..., preserve_analyses = TRUE)
 ```
 
-## Questions for Discussion
+## Column Naming Strategy
 
-1. **Which solution appeals to you most?**
-   - Solution 1 (always remove)?
-   - Solution 3 (keep but warn)?
-   - Solution 5 (remove objects, keep columns)?
-   - Combined approach?
+When analyses add columns to metadata (row_data or col_data), the column names follow these patterns:
 
-2. **Should `arrange()` invalidate analyses?**
-   - It changes order but not content
-   - Might matter for some analyses, not others
+### PCA (Principal Component Analysis)
+- Pattern: `{name}_PC{n}`
+- Example: If `name = "row_pca"`, columns are: `row_pca_PC1`, `row_pca_PC2`, `row_pca_PC3`, ...
+- Multiple PCAs can coexist: `row_pca_PC1`, `scaled_pca_PC1`, `centered_pca_PC1`
 
-3. **Metadata columns after filtering:**
-   - Keep PC1, PC2 even though underlying PCA object is gone?
-   - Or remove them too to avoid confusion?
+### Hierarchical Clustering / K-means
+- Pattern: `{name}_cluster`
+- Example: If `name = "gene_hclust"`, column is: `gene_hclust_cluster`
+- Multiple clusterings: `gene_hclust_k3_cluster`, `gene_hclust_k5_cluster`
 
-4. **Recompute functionality:**
-   - Should we auto-recompute if user tries to access stale analysis?
-   - Or just warn and let them explicitly recompute?
+### UMAP / t-SNE (Dimensionality Reduction)
+- Pattern: `{name}_{n}`
+- Example: If `name = "sample_umap"`, columns are: `sample_umap_1`, `sample_umap_2`
+- Multiple UMAPs: `sample_umap_1`, `sample_umap_perp30_1`
+
+### Rationale
+- **Explicit prefixing** prevents column name conflicts
+- **Clear provenance** - you know which analysis created which columns
+- **Multiple analyses** of same type can coexist with different parameters
+- **R conventions** - follows common pattern of prefixing related columns
+- **Easy filtering** - can use `select(starts_with("row_pca_"))` to get all PC columns
+
+### Default Names
+- Row-based analyses: `row_{method}` (e.g., `row_pca`, `row_hclust`)
+- Column-based analyses: `column_{method}` (e.g., `column_pca`, `column_kmeans`)
+- Or based on active component's semantic meaning from metadata
+
+### Examples
+```r
+# Default naming for rows
+tm %>%
+  activate(rows) %>%
+  compute_prcomp(n_components = 3)
+# Adds: row_pca_PC1, row_pca_PC2, row_pca_PC3
+
+# Custom naming
+tm %>%
+  activate(columns) %>%
+  compute_prcomp(name = "sample_pca", center = TRUE, scale. = TRUE)
+# Adds: sample_pca_PC1, sample_pca_PC2, ...
+
+# Multiple analyses with same method
+tm %>%
+  activate(rows) %>%
+  compute_hclust(k = 3, name = "gene_k3") %>%
+  compute_hclust(k = 5, name = "gene_k5")
+# Adds: gene_k3_cluster, gene_k5_cluster
+
+# Using existing meaningful names
+tm %>%
+  activate(columns) %>%  # columns represent samples
+  compute_prcomp(name = "samples")
+# Adds: samples_PC1, samples_PC2, ...
+```

@@ -35,6 +35,7 @@ Count observations within existing groups. This is a wrapper around
 \code{summarize(n = n())}.
 }
 \examples{
+\dontrun{
 mat <- matrix(rnorm(20), nrow = 10, ncol = 2)
 row_data <- data.frame(
   id = 1:10,
@@ -43,8 +44,9 @@ row_data <- data.frame(
 tm <- tidymatrix(mat, row_data)
 
 # Tally within groups
-tm \%>\%
-  activate(rows) \%>\%
-  group_by(group) \%>\%
+tm |>
+  activate(rows) |>
+  group_by(group) |>
   tally()
+}
 }

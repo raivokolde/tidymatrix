@@ -43,15 +43,15 @@ print(tm)
 
 # Example 2: Working with rows (people)
 # Filter to only people over 30
-tm_filtered <- tm %>%
-  activate(rows) %>%
+tm_filtered <- tm |>
+  activate(rows) |>
   filter(age > 30)
 
 print(tm_filtered)
 
 # Add a new column: age group
-tm_with_groups <- tm %>%
-  activate(rows) %>%
+tm_with_groups <- tm |>
+  activate(rows) |>
   mutate(age_group = case_when(
     age < 30 ~ "Young",
     age < 50 ~ "Middle",
@@ -61,35 +61,35 @@ tm_with_groups <- tm %>%
 print(tm_with_groups)
 
 # Select specific metadata columns
-tm_selected <- tm %>%
-  activate(rows) %>%
+tm_selected <- tm |>
+  activate(rows) |>
   select(person_id, age, gender)
 
 print(tm_selected)
 
 # Example 3: Working with columns (questions)
 # Filter to only required questions
-tm_required <- tm %>%
-  activate(columns) %>%
+tm_required <- tm |>
+  activate(columns) |>
   filter(required == TRUE)
 
 print(tm_required)
 
 # Add question numbers
-tm_numbered <- tm %>%
-  activate(columns) %>%
+tm_numbered <- tm |>
+  activate(columns) |>
   mutate(q_number = paste0("Q", question_id))
 
 print(tm_numbered)
 
 # Example 4: Chaining operations
 # Get satisfaction questions for people over 40
-tm_complex <- tm %>%
-  activate(rows) %>%
-  filter(age > 40, gender == "F") %>%
-  activate(columns) %>%
-  filter(category == "Satisfaction") %>%
-  activate(rows) %>%
+tm_complex <- tm |>
+  activate(rows) |>
+  filter(age > 40, gender == "F") |>
+  activate(columns) |>
+  filter(category == "Satisfaction") |>
+  activate(rows) |>
   arrange(age)
 
 print(tm_complex)
@@ -130,10 +130,10 @@ sample_data <- data.frame(
 expr_tm <- tidymatrix(expression, gene_data, sample_data)
 
 # Filter to metabolism genes and treatment samples
-expr_filtered <- expr_tm %>%
-  activate(rows) %>%
-  filter(pathway == "Metabolism") %>%
-  activate(columns) %>%
+expr_filtered <- expr_tm |>
+  activate(rows) |>
+  filter(pathway == "Metabolism") |>
+  activate(columns) |>
   filter(condition == "Treatment")
 
 print(expr_filtered)

@@ -33,7 +33,7 @@ test_that("activate works with pipe", {
   mat <- matrix(1:12, nrow = 4, ncol = 3)
   tm <- tidymatrix(mat)
 
-  tm_rows <- tm %>% activate(rows)
+  tm_rows <- tm |> activate(rows)
 
   expect_equal(tm_rows$active, "rows")
 })

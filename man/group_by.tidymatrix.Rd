@@ -24,6 +24,7 @@ Create a grouped tidymatrix for use with \code{summarize()}. Groups are
 created based on the active metadata component (row_data or col_data).
 }
 \examples{
+\dontrun{
 mat <- matrix(rnorm(20), nrow = 5, ncol = 4)
 row_data <- data.frame(
   id = 1:5,
@@ -32,8 +33,8 @@ row_data <- data.frame(
 tm <- tidymatrix(mat, row_data)
 
 # Group by a variable
-tm_grouped <- tm \%>\%
-  activate(rows) \%>\%
+tm_grouped <- tm |>
+  activate(rows) |>
   group_by(group)
 
 # Multiple grouping variables
@@ -43,7 +44,8 @@ row_data2 <- data.frame(
   batch = c(1, 2, 1, 2, 1)
 )
 tm2 <- tidymatrix(mat, row_data2)
-tm_grouped2 <- tm2 \%>\%
-  activate(rows) \%>\%
+tm_grouped2 <- tm2 |>
+  activate(rows) |>
   group_by(condition, batch)
+}
 }

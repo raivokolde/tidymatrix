@@ -26,11 +26,11 @@ col_data <- data.frame(id = 1:3, type = c("x", "y", "z"))
 tm <- tidymatrix(mat, row_data, col_data)
 
 # Activate rows to filter/mutate row metadata
-tm \%>\% activate(rows)
+tm |> activate(rows)
 
 # Activate columns to work with column metadata
-tm \%>\% activate(columns)
+tm |> activate(columns)
 
 # Activate matrix to work with the matrix directly
-tm \%>\% activate(matrix)
+tm |> activate(matrix)
 }

@@ -7,8 +7,8 @@ test_that("filter works on rows", {
   row_data <- data.frame(id = 1:4, group = c("A", "A", "B", "B"))
   tm <- tidymatrix(mat, row_data)
 
-  tm_filtered <- tm %>%
-    activate(rows) %>%
+  tm_filtered <- tm |>
+    activate(rows) |>
     filter(group == "A")
 
   expect_equal(nrow(tm_filtered$matrix), 2)
@@ -22,8 +22,8 @@ test_that("filter works on columns", {
   col_data <- data.frame(id = 1:3, type = c("x", "y", "x"))
   tm <- tidymatrix(mat, col_data = col_data)
 
-  tm_filtered <- tm %>%
-    activate(columns) %>%
+  tm_filtered <- tm |>
+    activate(columns) |>
     filter(type == "x")
 
   expect_equal(ncol(tm_filtered$matrix), 2)
@@ -41,8 +41,8 @@ test_that("filter with multiple conditions", {
   )
   tm <- tidymatrix(mat, row_data)
 
-  tm_filtered <- tm %>%
-    activate(rows) %>%
+  tm_filtered <- tm |>
+    activate(rows) |>
     filter(group == "B", score > 25)
 
   expect_equal(nrow(tm_filtered$matrix), 2)
@@ -66,8 +66,8 @@ test_that("select works on row metadata", {
   row_data <- data.frame(id = 1:4, group = c("A", "A", "B", "B"), score = 1:4)
   tm <- tidymatrix(mat, row_data)
 
-  tm_selected <- tm %>%
-    activate(rows) %>%
+  tm_selected <- tm |>
+    activate(rows) |>
     select(id, group)
 
   expect_equal(ncol(tm_selected$row_data), 2)
@@ -80,8 +80,8 @@ test_that("select works on column metadata", {
   col_data <- data.frame(id = 1:3, type = c("x", "y", "z"), required = c(T, F, T))
   tm <- tidymatrix(mat, col_data = col_data)
 
-  tm_selected <- tm %>%
-    activate(columns) %>%
+  tm_selected <- tm |>
+    activate(columns) |>
     select(type)
 
   expect_equal(ncol(tm_selected$col_data), 1)
@@ -94,8 +94,8 @@ test_that("select with dplyr helpers", {
   row_data <- data.frame(id = 1:4, group_a = 1:4, group_b = 5:8, other = 9:12)
   tm <- tidymatrix(mat, row_data)
 
-  tm_selected <- tm %>%
-    activate(rows) %>%
+  tm_selected <- tm |>
+    activate(rows) |>
     select(starts_with("group"))
 
   expect_equal(ncol(tm_selected$row_data), 2)
@@ -119,8 +119,8 @@ test_that("mutate adds columns to row metadata", {
   row_data <- data.frame(id = 1:4, value = c(10, 20, 30, 40))
   tm <- tidymatrix(mat, row_data)
 
-  tm_mutated <- tm %>%
-    activate(rows) %>%
+  tm_mutated <- tm |>
+    activate(rows) |>
     mutate(doubled = value * 2)
 
   expect_equal(ncol(tm_mutated$row_data), 3)
@@ -133,8 +133,8 @@ test_that("mutate modifies existing columns in row metadata", {
   row_data <- data.frame(id = 1:4, value = c(10, 20, 30, 40))
   tm <- tidymatrix(mat, row_data)
 
-  tm_mutated <- tm %>%
-    activate(rows) %>%
+  tm_mutated <- tm |>
+    activate(rows) |>
     mutate(value = value + 5)
 
   expect_equal(tm_mutated$row_data$value, c(15, 25, 35, 45))
@@ -145,8 +145,8 @@ test_that("mutate works on column metadata", {
   col_data <- data.frame(id = 1:3, weight = c(0.5, 1.0, 1.5))
   tm <- tidymatrix(mat, col_data = col_data)
 
-  tm_mutated <- tm %>%
-    activate(columns) %>%
+  tm_mutated <- tm |>
+    activate(columns) |>
     mutate(normalized = weight / sum(weight))
 
   expect_equal(ncol(tm_mutated$col_data), 3)
@@ -161,8 +161,8 @@ test_that("mutate with multiple new columns", {
   row_data <- data.frame(id = 1:4)
   tm <- tidymatrix(mat, row_data)
 
-  tm_mutated <- tm %>%
-    activate(rows) %>%
+  tm_mutated <- tm |>
+    activate(rows) |>
     mutate(
       squared = id^2,
       cubed = id^3
@@ -190,8 +190,8 @@ test_that("arrange reorders rows and matrix rows", {
   row_data <- data.frame(id = c(4, 2, 3, 1), value = c(40, 20, 30, 10))
   tm <- tidymatrix(mat, row_data)
 
-  tm_arranged <- tm %>%
-    activate(rows) %>%
+  tm_arranged <- tm |>
+    activate(rows) |>
     arrange(value)
 
   expect_equal(tm_arranged$row_data$id, c(1, 2, 3, 4))
@@ -204,8 +204,8 @@ test_that("arrange reorders columns and matrix columns", {
   col_data <- data.frame(id = c(3, 1, 2), priority = c(30, 10, 20))
   tm <- tidymatrix(mat, col_data = col_data)
 
-  tm_arranged <- tm %>%
-    activate(columns) %>%
+  tm_arranged <- tm |>
+    activate(columns) |>
     arrange(priority)
 
   expect_equal(tm_arranged$col_data$id, c(1, 2, 3))
@@ -218,8 +218,8 @@ test_that("arrange with descending order", {
   row_data <- data.frame(id = 1:4, value = c(10, 40, 20, 30))
   tm <- tidymatrix(mat, row_data)
 
-  tm_arranged <- tm %>%
-    activate(rows) %>%
+  tm_arranged <- tm |>
+    activate(rows) |>
     arrange(desc(value))
 
   expect_equal(tm_arranged$row_data$value, c(40, 30, 20, 10))
@@ -235,8 +235,8 @@ test_that("arrange with multiple columns", {
   )
   tm <- tidymatrix(mat, row_data)
 
-  tm_arranged <- tm %>%
-    activate(rows) %>%
+  tm_arranged <- tm |>
+    activate(rows) |>
     arrange(group, value)
 
   expect_equal(tm_arranged$row_data$id, c(2, 4, 5, 3, 1))
@@ -267,12 +267,12 @@ test_that("can chain multiple operations", {
   )
   tm <- tidymatrix(mat, row_data, col_data)
 
-  tm_result <- tm %>%
-    activate(rows) %>%
-    filter(group %in% c("A", "B")) %>%
-    mutate(rank = rank(score)) %>%
-    arrange(score) %>%
-    activate(columns) %>%
+  tm_result <- tm |>
+    activate(rows) |>
+    filter(group %in% c("A", "B")) |>
+    mutate(rank = rank(score)) |>
+    arrange(score) |>
+    activate(columns) |>
     filter(type == "x")
 
   expect_equal(nrow(tm_result$matrix), 4)
@@ -287,10 +287,10 @@ test_that("operations preserve tidymatrix class", {
   row_data <- data.frame(id = 1:4, group = c("A", "A", "B", "B"))
   tm <- tidymatrix(mat, row_data)
 
-  tm_result <- tm %>%
-    activate(rows) %>%
-    filter(group == "A") %>%
-    mutate(new_col = id * 2) %>%
+  tm_result <- tm |>
+    activate(rows) |>
+    filter(group == "A") |>
+    mutate(new_col = id * 2) |>
     select(id, new_col)
 
   expect_s3_class(tm_result, "tidymatrix")

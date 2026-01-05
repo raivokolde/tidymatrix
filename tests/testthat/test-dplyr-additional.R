@@ -7,8 +7,8 @@ test_that("slice works on rows by position", {
   row_data <- data.frame(id = 1:4, value = c(10, 20, 30, 40))
   tm <- tidymatrix(mat, row_data)
 
-  tm_sliced <- tm %>%
-    activate(rows) %>%
+  tm_sliced <- tm |>
+    activate(rows) |>
     slice(2, 3)
 
   expect_equal(nrow(tm_sliced$matrix), 2)
@@ -22,8 +22,8 @@ test_that("slice works on columns by position", {
   col_data <- data.frame(id = 1:3, type = c("x", "y", "z"))
   tm <- tidymatrix(mat, col_data = col_data)
 
-  tm_sliced <- tm %>%
-    activate(columns) %>%
+  tm_sliced <- tm |>
+    activate(columns) |>
     slice(1, 3)
 
   expect_equal(ncol(tm_sliced$matrix), 2)
@@ -37,8 +37,8 @@ test_that("slice with range works", {
   row_data <- data.frame(id = 1:5)
   tm <- tidymatrix(mat, row_data)
 
-  tm_sliced <- tm %>%
-    activate(rows) %>%
+  tm_sliced <- tm |>
+    activate(rows) |>
     slice(2:4)
 
   expect_equal(nrow(tm_sliced$matrix), 3)
@@ -62,8 +62,8 @@ test_that("slice_head takes first n rows", {
   row_data <- data.frame(id = 1:4)
   tm <- tidymatrix(mat, row_data)
 
-  tm_sliced <- tm %>%
-    activate(rows) %>%
+  tm_sliced <- tm |>
+    activate(rows) |>
     slice_head(n = 2)
 
   expect_equal(nrow(tm_sliced$matrix), 2)
@@ -76,8 +76,8 @@ test_that("slice_head takes first n columns", {
   col_data <- data.frame(id = 1:3)
   tm <- tidymatrix(mat, col_data = col_data)
 
-  tm_sliced <- tm %>%
-    activate(columns) %>%
+  tm_sliced <- tm |>
+    activate(columns) |>
     slice_head(n = 2)
 
   expect_equal(ncol(tm_sliced$matrix), 2)
@@ -89,8 +89,8 @@ test_that("slice_head with prop works", {
   row_data <- data.frame(id = 1:10)
   tm <- tidymatrix(mat, row_data)
 
-  tm_sliced <- tm %>%
-    activate(rows) %>%
+  tm_sliced <- tm |>
+    activate(rows) |>
     slice_head(prop = 0.3)
 
   expect_equal(nrow(tm_sliced$matrix), 3)
@@ -104,8 +104,8 @@ test_that("slice_tail takes last n rows", {
   row_data <- data.frame(id = 1:4)
   tm <- tidymatrix(mat, row_data)
 
-  tm_sliced <- tm %>%
-    activate(rows) %>%
+  tm_sliced <- tm |>
+    activate(rows) |>
     slice_tail(n = 2)
 
   expect_equal(nrow(tm_sliced$matrix), 2)
@@ -118,8 +118,8 @@ test_that("slice_tail takes last n columns", {
   col_data <- data.frame(id = 1:3)
   tm <- tidymatrix(mat, col_data = col_data)
 
-  tm_sliced <- tm %>%
-    activate(columns) %>%
+  tm_sliced <- tm |>
+    activate(columns) |>
     slice_tail(n = 2)
 
   expect_equal(ncol(tm_sliced$matrix), 2)
@@ -134,8 +134,8 @@ test_that("slice_sample returns correct number of rows", {
   row_data <- data.frame(id = 1:10)
   tm <- tidymatrix(mat, row_data)
 
-  tm_sampled <- tm %>%
-    activate(rows) %>%
+  tm_sampled <- tm |>
+    activate(rows) |>
     slice_sample(n = 5)
 
   expect_equal(nrow(tm_sampled$matrix), 5)
@@ -148,8 +148,8 @@ test_that("slice_sample with replacement can return more rows", {
   row_data <- data.frame(id = 1:4)
   tm <- tidymatrix(mat, row_data)
 
-  tm_sampled <- tm %>%
-    activate(rows) %>%
+  tm_sampled <- tm |>
+    activate(rows) |>
     slice_sample(n = 10, replace = TRUE)
 
   expect_equal(nrow(tm_sampled$matrix), 10)
@@ -162,8 +162,8 @@ test_that("slice_sample with prop works", {
   row_data <- data.frame(id = 1:10)
   tm <- tidymatrix(mat, row_data)
 
-  tm_sampled <- tm %>%
-    activate(rows) %>%
+  tm_sampled <- tm |>
+    activate(rows) |>
     slice_sample(prop = 0.5)
 
   expect_equal(nrow(tm_sampled$matrix), 5)
@@ -176,8 +176,8 @@ test_that("rename works on row metadata", {
   row_data <- data.frame(id = 1:4, old_name = c("A", "B", "C", "D"))
   tm <- tidymatrix(mat, row_data)
 
-  tm_renamed <- tm %>%
-    activate(rows) %>%
+  tm_renamed <- tm |>
+    activate(rows) |>
     rename(new_name = old_name)
 
   expect_equal(names(tm_renamed$row_data), c("id", "new_name"))
@@ -190,8 +190,8 @@ test_that("rename works on column metadata", {
   col_data <- data.frame(q_id = 1:3, question = c("Q1", "Q2", "Q3"))
   tm <- tidymatrix(mat, col_data = col_data)
 
-  tm_renamed <- tm %>%
-    activate(columns) %>%
+  tm_renamed <- tm |>
+    activate(columns) |>
     rename(question_id = q_id)
 
   expect_equal(names(tm_renamed$col_data), c("question_id", "question"))
@@ -203,8 +203,8 @@ test_that("rename can rename multiple columns", {
   row_data <- data.frame(old1 = 1:4, old2 = 5:8, old3 = 9:12)
   tm <- tidymatrix(mat, row_data)
 
-  tm_renamed <- tm %>%
-    activate(rows) %>%
+  tm_renamed <- tm |>
+    activate(rows) |>
     rename(new1 = old1, new2 = old2)
 
   expect_equal(names(tm_renamed$row_data), c("new1", "new2", "old3"))
@@ -227,8 +227,8 @@ test_that("pull extracts column from row metadata", {
   row_data <- data.frame(id = 1:4, value = c(10, 20, 30, 40))
   tm <- tidymatrix(mat, row_data)
 
-  values <- tm %>%
-    activate(rows) %>%
+  values <- tm |>
+    activate(rows) |>
     pull(value)
 
   expect_equal(values, c(10, 20, 30, 40))
@@ -240,8 +240,8 @@ test_that("pull extracts column from column metadata", {
   col_data <- data.frame(id = 1:3, type = c("x", "y", "z"))
   tm <- tidymatrix(mat, col_data = col_data)
 
-  types <- tm %>%
-    activate(columns) %>%
+  types <- tm |>
+    activate(columns) |>
     pull(type)
 
   expect_equal(types, c("x", "y", "z"))
@@ -253,8 +253,8 @@ test_that("pull with no argument extracts last column", {
   row_data <- data.frame(id = 1:4, value = c(10, 20, 30, 40))
   tm <- tidymatrix(mat, row_data)
 
-  values <- tm %>%
-    activate(rows) %>%
+  values <- tm |>
+    activate(rows) |>
     pull()
 
   expect_equal(values, c(10, 20, 30, 40))
@@ -265,8 +265,8 @@ test_that("pull with numeric index works", {
   row_data <- data.frame(id = 1:4, value = c(10, 20, 30, 40))
   tm <- tidymatrix(mat, row_data)
 
-  ids <- tm %>%
-    activate(rows) %>%
+  ids <- tm |>
+    activate(rows) |>
     pull(1)
 
   expect_equal(ids, c(1, 2, 3, 4))
@@ -289,8 +289,8 @@ test_that("relocate moves columns to front by default", {
   row_data <- data.frame(a = 1:4, b = 5:8, c = 9:12)
   tm <- tidymatrix(mat, row_data)
 
-  tm_relocated <- tm %>%
-    activate(rows) %>%
+  tm_relocated <- tm |>
+    activate(rows) |>
     relocate(c)
 
   expect_equal(names(tm_relocated$row_data), c("c", "a", "b"))
@@ -301,8 +301,8 @@ test_that("relocate with .before works", {
   row_data <- data.frame(a = 1:4, b = 5:8, c = 9:12)
   tm <- tidymatrix(mat, row_data)
 
-  tm_relocated <- tm %>%
-    activate(rows) %>%
+  tm_relocated <- tm |>
+    activate(rows) |>
     relocate(c, .before = b)
 
   expect_equal(names(tm_relocated$row_data), c("a", "c", "b"))
@@ -313,8 +313,8 @@ test_that("relocate with .after works", {
   row_data <- data.frame(a = 1:4, b = 5:8, c = 9:12)
   tm <- tidymatrix(mat, row_data)
 
-  tm_relocated <- tm %>%
-    activate(rows) %>%
+  tm_relocated <- tm |>
+    activate(rows) |>
     relocate(a, .after = c)
 
   expect_equal(names(tm_relocated$row_data), c("b", "c", "a"))
@@ -325,8 +325,8 @@ test_that("relocate works on column metadata", {
   col_data <- data.frame(id = 1:3, type = c("x", "y", "z"), priority = c(1, 2, 3))
   tm <- tidymatrix(mat, col_data = col_data)
 
-  tm_relocated <- tm %>%
-    activate(columns) %>%
+  tm_relocated <- tm |>
+    activate(columns) |>
     relocate(priority, .before = type)
 
   expect_equal(names(tm_relocated$col_data), c("id", "priority", "type"))
@@ -353,12 +353,12 @@ test_that("can chain new verbs with existing ones", {
   )
   tm <- tidymatrix(mat, row_data)
 
-  result <- tm %>%
-    activate(rows) %>%
-    rename(id = old_id) %>%
-    filter(group %in% c("A", "B")) %>%
-    arrange(score) %>%
-    slice_head(n = 3) %>%
+  result <- tm |>
+    activate(rows) |>
+    rename(id = old_id) |>
+    filter(group %in% c("A", "B")) |>
+    arrange(score) |>
+    slice_head(n = 3) |>
     relocate(score, .before = id)
 
   expect_equal(nrow(result$matrix), 3)

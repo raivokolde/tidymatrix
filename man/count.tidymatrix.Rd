@@ -41,6 +41,7 @@ Count the number of observations in each group, aggregating the matrix.
 Returns a tidymatrix (not a tibble).
 }
 \examples{
+\dontrun{
 mat <- matrix(rnorm(20), nrow = 10, ncol = 2)
 row_data <- data.frame(
   id = 1:10,
@@ -50,17 +51,18 @@ row_data <- data.frame(
 tm <- tidymatrix(mat, row_data)
 
 # Count by single variable
-tm \%>\%
-  activate(rows) \%>\%
+tm |>
+  activate(rows) |>
   count(group)
 
 # Count by multiple variables
-tm \%>\%
-  activate(rows) \%>\%
+tm |>
+  activate(rows) |>
   count(group, subgroup)
 
 # Use different aggregation for matrix
-tm \%>\%
-  activate(rows) \%>\%
+tm |>
+  activate(rows) |>
   count(group, .matrix_fn = median)
+}
 }

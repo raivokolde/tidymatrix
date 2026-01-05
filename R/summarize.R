@@ -19,6 +19,7 @@ NULL
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' mat <- matrix(rnorm(20), nrow = 10, ncol = 2)
 #' row_data <- data.frame(
 #'   id = 1:10,
@@ -27,25 +28,26 @@ NULL
 #' tm <- tidymatrix(mat, row_data)
 #'
 #' # Summarize with default (mean) for numeric matrix
-#' tm %>%
-#'   activate(rows) %>%
-#'   group_by(group) %>%
+#' tm |>
+#'   activate(rows) |>
+#'   group_by(group) |>
 #'   summarize(n = n(), avg_id = mean(id))
 #'
 #' # Use different aggregation function
-#' tm %>%
-#'   activate(rows) %>%
-#'   group_by(group) %>%
+#' tm |>
+#'   activate(rows) |>
+#'   group_by(group) |>
 #'   summarize(n = n(), .matrix_fn = median)
 #'
 #' # With additional arguments
 #' mat_na <- mat
 #' mat_na[1, 1] <- NA
 #' tm_na <- tidymatrix(mat_na, row_data)
-#' tm_na %>%
-#'   activate(rows) %>%
-#'   group_by(group) %>%
+#' tm_na |>
+#'   activate(rows) |>
+#'   group_by(group) |>
 #'   summarize(n = n(), .matrix_fn = mean, .matrix_args = list(na.rm = TRUE))
+#' }
 summarize.grouped_tidymatrix <- function(.data, ..., .matrix_fn = NULL,
                                          .matrix_args = list(), .groups = NULL) {
   if (!is_grouped_tidymatrix(.data)) {

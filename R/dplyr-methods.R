@@ -43,6 +43,9 @@ filter.tidymatrix <- function(.data, ..., .preserve = FALSE) {
     .data$matrix <- .data$matrix[, col_indices, drop = FALSE]
   }
 
+  # Remove stored analyses since data changed
+  .data <- remove_all_analyses(.data, "filter")
+
   .data
 }
 

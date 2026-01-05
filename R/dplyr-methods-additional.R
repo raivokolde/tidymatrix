@@ -42,6 +42,9 @@ slice.tidymatrix <- function(.data, ..., .preserve = FALSE) {
     .data$matrix <- .data$matrix[, col_indices, drop = FALSE]
   }
 
+  # Remove stored analyses since data changed
+  .data <- remove_all_analyses(.data, "slice")
+
   .data
 }
 
@@ -93,6 +96,9 @@ slice_head.tidymatrix <- function(.data, n, prop, ...) {
     .data$matrix <- .data$matrix[, col_indices, drop = FALSE]
   }
 
+  # Remove stored analyses since data changed
+  .data <- remove_all_analyses(.data, "slice_head")
+
   .data
 }
 
@@ -136,6 +142,9 @@ slice_tail.tidymatrix <- function(.data, n, prop, ...) {
     .data$col_data <- sliced_cols
     .data$matrix <- .data$matrix[, col_indices, drop = FALSE]
   }
+
+  # Remove stored analyses since data changed
+  .data <- remove_all_analyses(.data, "slice_tail")
 
   .data
 }
@@ -189,6 +198,9 @@ slice_sample.tidymatrix <- function(.data, n, prop, weight_by = NULL, replace = 
     .data$col_data <- sampled_cols
     .data$matrix <- .data$matrix[, col_indices, drop = FALSE]
   }
+
+  # Remove stored analyses since data changed
+  .data <- remove_all_analyses(.data, "slice_sample")
 
   .data
 }

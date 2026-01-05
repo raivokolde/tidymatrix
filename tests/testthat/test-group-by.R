@@ -7,8 +7,8 @@ test_that("group_by works on rows", {
   row_data <- data.frame(id = 1:4, group = c("A", "A", "B", "B"))
   tm <- tidymatrix(mat, row_data)
 
-  tm_grouped <- tm %>%
-    activate(rows) %>%
+  tm_grouped <- tm |>
+    activate(rows) |>
     group_by(group)
 
   expect_s3_class(tm_grouped, "grouped_tidymatrix")
@@ -21,8 +21,8 @@ test_that("group_by works on columns", {
   col_data <- data.frame(id = 1:3, type = c("x", "y", "x"))
   tm <- tidymatrix(mat, col_data = col_data)
 
-  tm_grouped <- tm %>%
-    activate(columns) %>%
+  tm_grouped <- tm |>
+    activate(columns) |>
     group_by(type)
 
   expect_s3_class(tm_grouped, "grouped_tidymatrix")
@@ -38,8 +38,8 @@ test_that("group_by with multiple variables works", {
   )
   tm <- tidymatrix(mat, row_data)
 
-  tm_grouped <- tm %>%
-    activate(rows) %>%
+  tm_grouped <- tm |>
+    activate(rows) |>
     group_by(group, subgroup)
 
   expect_equal(group_vars(tm_grouped), c("group", "subgroup"))
@@ -60,8 +60,8 @@ test_that("ungroup removes grouping", {
   row_data <- data.frame(id = 1:4, group = c("A", "A", "B", "B"))
   tm <- tidymatrix(mat, row_data)
 
-  tm_grouped <- tm %>%
-    activate(rows) %>%
+  tm_grouped <- tm |>
+    activate(rows) |>
     group_by(group)
 
   tm_ungrouped <- ungroup(tm_grouped)
@@ -76,8 +76,8 @@ test_that("print.grouped_tidymatrix shows grouping info", {
   row_data <- data.frame(id = 1:4, group = c("A", "A", "B", "B"))
   tm <- tidymatrix(mat, row_data)
 
-  tm_grouped <- tm %>%
-    activate(rows) %>%
+  tm_grouped <- tm |>
+    activate(rows) |>
     group_by(group)
 
   expect_output(print(tm_grouped), "grouped tidymatrix")
@@ -92,9 +92,9 @@ test_that("summarize aggregates numeric matrix with default mean", {
   row_data <- data.frame(id = 1:3, group = c("A", "A", "B"))
   tm <- tidymatrix(mat, row_data)
 
-  result <- tm %>%
-    activate(rows) %>%
-    group_by(group) %>%
+  result <- tm |>
+    activate(rows) |>
+    group_by(group) |>
     summarize(n = n())
 
   expect_s3_class(result, "tidymatrix")
@@ -110,9 +110,9 @@ test_that("summarize with custom matrix function works", {
   row_data <- data.frame(id = 1:3, group = c("A", "A", "B"))
   tm <- tidymatrix(mat, row_data)
 
-  result <- tm %>%
-    activate(rows) %>%
-    group_by(group) %>%
+  result <- tm |>
+    activate(rows) |>
+    group_by(group) |>
     summarize(n = n(), .matrix_fn = sum)
 
   expect_equal(result$matrix[1, 1], sum(c(1, 2)))
@@ -128,9 +128,9 @@ test_that("summarize on columns aggregates column-wise", {
   col_data <- data.frame(id = 1:3, type = c("x", "y", "x"))
   tm <- tidymatrix(mat, col_data = col_data)
 
-  result <- tm %>%
-    activate(columns) %>%
-    group_by(type) %>%
+  result <- tm |>
+    activate(columns) |>
+    group_by(type) |>
     summarize(n = n())
 
   expect_equal(ncol(result$matrix), 2)  # x and y
@@ -146,7 +146,7 @@ test_that("summarize requires .matrix_fn for logical matrix", {
   tm <- tidymatrix(mat, row_data)
 
   expect_error(
-    tm %>% activate(rows) %>% group_by(group) %>% summarize(n = n()),
+    tm |> activate(rows) |> group_by(group) |> summarize(n = n()),
     "Cannot use default aggregation.*on non-numeric matrix"
   )
 })
@@ -160,9 +160,9 @@ test_that("summarize with .matrix_fn works on logical matrix", {
   row_data <- data.frame(id = 1:2, group = c("A", "A"))
   tm <- tidymatrix(mat, row_data)
 
-  result <- tm %>%
-    activate(rows) %>%
-    group_by(group) %>%
+  result <- tm |>
+    activate(rows) |>
+    group_by(group) |>
     summarize(n = n(), .matrix_fn = any)
 
   expect_equal(nrow(result$matrix), 1)
@@ -180,9 +180,9 @@ test_that("summarize with .matrix_args works", {
   row_data <- data.frame(id = 1:3, group = c("A", "A", "B"))
   tm <- tidymatrix(mat, row_data)
 
-  result <- tm %>%
-    activate(rows) %>%
-    group_by(group) %>%
+  result <- tm |>
+    activate(rows) |>
+    group_by(group) |>
     summarize(n = n(), .matrix_args = list(na.rm = TRUE))
 
   # Group A (rows 1-2): mean(c(1, 2), na.rm=TRUE) = 1.5
@@ -200,9 +200,9 @@ test_that("summarize with multiple grouping variables", {
   )
   tm <- tidymatrix(mat, row_data)
 
-  result <- tm %>%
-    activate(rows) %>%
-    group_by(group, subgroup) %>%
+  result <- tm |>
+    activate(rows) |>
+    group_by(group, subgroup) |>
     summarize(n = n())
 
   expect_equal(nrow(result$matrix), 4)  # A-x, A-y, B-x, B-y
@@ -214,9 +214,9 @@ test_that("summarize with character matrix and first function", {
   row_data <- data.frame(id = 1:2, group = c("A", "A"))
   tm <- tidymatrix(mat, row_data)
 
-  result <- tm %>%
-    activate(rows) %>%
-    group_by(group) %>%
+  result <- tm |>
+    activate(rows) |>
+    group_by(group) |>
     summarize(n = n(), .matrix_fn = dplyr::first)
 
   expect_equal(nrow(result$matrix), 1)
@@ -234,8 +234,8 @@ test_that("count works and returns tidymatrix", {
   )
   tm <- tidymatrix(mat, row_data)
 
-  result <- tm %>%
-    activate(rows) %>%
+  result <- tm |>
+    activate(rows) |>
     count(group)
 
   expect_s3_class(result, "tidymatrix")
@@ -253,8 +253,8 @@ test_that("count with multiple variables", {
   )
   tm <- tidymatrix(mat, row_data)
 
-  result <- tm %>%
-    activate(rows) %>%
+  result <- tm |>
+    activate(rows) |>
     count(group, subgroup)
 
   expect_equal(nrow(result$matrix), 4)
@@ -269,8 +269,8 @@ test_that("count with sort works", {
   )
   tm <- tidymatrix(mat, row_data)
 
-  result <- tm %>%
-    activate(rows) %>%
+  result <- tm |>
+    activate(rows) |>
     count(group, sort = TRUE)
 
   expect_equal(result$row_data$group[1], "A")  # Most frequent
@@ -285,8 +285,8 @@ test_that("count with custom .matrix_fn", {
   )
   tm <- tidymatrix(mat, row_data)
 
-  result <- tm %>%
-    activate(rows) %>%
+  result <- tm |>
+    activate(rows) |>
     count(group, .matrix_fn = sum)
 
   expect_equal(result$matrix[1, 1], sum(c(1, 2)))
@@ -302,9 +302,9 @@ test_that("tally works on grouped tidymatrix", {
   )
   tm <- tidymatrix(mat, row_data)
 
-  result <- tm %>%
-    activate(rows) %>%
-    group_by(group) %>%
+  result <- tm |>
+    activate(rows) |>
+    group_by(group) |>
     tally()
 
   expect_s3_class(result, "tidymatrix")
@@ -320,9 +320,9 @@ test_that("tally with custom name", {
   )
   tm <- tidymatrix(mat, row_data)
 
-  result <- tm %>%
-    activate(rows) %>%
-    group_by(group) %>%
+  result <- tm |>
+    activate(rows) |>
+    group_by(group) |>
     tally(name = "count")
 
   expect_true("count" %in% names(result$row_data))
@@ -344,12 +344,12 @@ test_that("complex chain with grouping and summarize", {
   )
   tm <- tidymatrix(mat, row_data, col_data)
 
-  result <- tm %>%
-    activate(rows) %>%
-    filter(batch == 1) %>%
-    group_by(condition) %>%
-    summarize(n = n(), .matrix_fn = median) %>%
-    activate(columns) %>%
+  result <- tm |>
+    activate(rows) |>
+    filter(batch == 1) |>
+    group_by(condition) |>
+    summarize(n = n(), .matrix_fn = median) |>
+    activate(columns) |>
     filter(type == "A")
 
   expect_s3_class(result, "tidymatrix")
