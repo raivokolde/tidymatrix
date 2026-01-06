@@ -3,3 +3,6 @@
 .RData
 .Ruserdata
 *.Rproj
+vignettes/*.R
+vignettes/*.html
+tests/testthat/Rplots.pdf
