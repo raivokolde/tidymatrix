@@ -51,20 +51,6 @@ test_that("compute_prcomp with custom name", {
   expect_equal(list_analyses(tm), "gene_pca")
 })
 
-test_that("add_pca_scores doesn't store object", {
-  mat <- matrix(rnorm(50), nrow = 10, ncol = 5)
-  tm <- tidymatrix(mat)
-
-  tm <- tm |>
-    activate(columns) |>
-    add_pca_scores(n = 2, name = "PC")
-
-  expect_true("PC_PC1" %in% names(tm$col_data))
-  expect_true("PC_PC2" %in% names(tm$col_data))
-
-  expect_equal(length(list_analyses(tm)), 0)
-})
-
 test_that("compute_prcomp errors when matrix is active", {
   mat <- matrix(rnorm(50), nrow = 10, ncol = 5)
   tm <- tidymatrix(mat)
@@ -165,33 +151,6 @@ test_that("compute_kmeans stores kmeans object", {
   expect_true("cluster" %in% names(km_obj))
   expect_true("centers" %in% names(km_obj))
   expect_equal(nrow(km_obj$centers), 2)
-})
-
-# Test add_clusters ----
-
-test_that("add_clusters with hclust method", {
-  mat <- matrix(rnorm(50), nrow = 10, ncol = 5)
-  tm <- tidymatrix(mat)
-
-  tm <- tm |>
-    activate(rows) |>
-    add_clusters(method = "hclust", k = 3, name = "cluster")
-
-  expect_true("cluster_cluster" %in% names(tm$row_data))
-  expect_equal(length(list_analyses(tm)), 0)  # Shouldn't store
-})
-
-test_that("add_clusters with kmeans method", {
-  set.seed(123)
-  mat <- matrix(rnorm(50), nrow = 10, ncol = 5)
-  tm <- tidymatrix(mat)
-
-  tm <- tm |>
-    activate(rows) |>
-    add_clusters(method = "kmeans", k = 3, name = "cluster")
-
-  expect_true("cluster_cluster" %in% names(tm$row_data))
-  expect_equal(length(list_analyses(tm)), 0)  # Shouldn't store
 })
 
 # Test analysis management ----

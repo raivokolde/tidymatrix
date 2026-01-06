@@ -100,30 +100,3 @@ compute_prcomp <- function(x, name = NULL, n_components = NULL, store = TRUE, ..
 
   x
 }
-
-#' Add PCA scores to metadata (simple version)
-#'
-#' A lightweight version of \code{compute_prcomp} that only adds PC scores
-#' to metadata without storing the full prcomp object.
-#'
-#' @param x A tidymatrix object
-#' @param n Number of components to compute. Default is 2.
-#' @param name Name prefix for PC columns. Default is "PC".
-#' @param ... Additional arguments passed to \code{stats::prcomp()}
-#'
-#' @return A tidymatrix object with PC scores added to metadata
-#' @export
-#'
-#' @examples
-#' mat <- matrix(rnorm(100), nrow = 10, ncol = 10)
-#' tm <- tidymatrix(mat)
-#'
-#' # Quick PCA for visualization
-#' tm <- tm |>
-#'   activate(columns) |>
-#'   add_pca_scores(n = 2, center = TRUE, scale. = TRUE)
-#'
-#' # Now col_data has PC_PC1, PC_PC2
-add_pca_scores <- function(x, n = 2, name = "PC", ...) {
-  compute_prcomp(x, name = name, n_components = n, store = FALSE, ...)
-}

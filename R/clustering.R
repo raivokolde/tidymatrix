@@ -182,35 +182,3 @@ compute_kmeans <- function(x, centers, name = NULL, store = TRUE, ...) {
 
   x
 }
-
-#' Add cluster assignments to metadata (simple version)
-#'
-#' A lightweight wrapper that adds cluster assignments without storing the
-#' full clustering object.
-#'
-#' @param x A tidymatrix object
-#' @param method Clustering method: "hclust" or "kmeans"
-#' @param k Number of clusters
-#' @param name Name prefix for cluster column. Default is "cluster".
-#' @param ... Additional arguments passed to the clustering function
-#'
-#' @return A tidymatrix object with cluster assignments added to metadata
-#' @export
-#'
-#' @examples
-#' mat <- matrix(rnorm(100), nrow = 10, ncol = 10)
-#' tm <- tidymatrix(mat)
-#'
-#' # Quick clustering for exploration
-#' tm <- tm |>
-#'   activate(rows) |>
-#'   add_clusters(method = "hclust", k = 3)
-add_clusters <- function(x, method = c("hclust", "kmeans"), k, name = "cluster", ...) {
-  method <- match.arg(method)
-
-  if (method == "hclust") {
-    compute_hclust(x, k = k, name = name, store = FALSE, ...)
-  } else {
-    compute_kmeans(x, centers = k, name = name, store = FALSE, ...)
-  }
-}

@@ -130,35 +130,10 @@ cat("Cluster columns still present:",
     "gene_clusters_cluster" %in% names(expr_tm_filtered$row_data), "\\n")
 
 # =============================================================================
-# Example 5: Lightweight analysis (no storage)
+# Example 5: Complete analysis workflow
 # =============================================================================
 
-cat("\\n=== Example 5: Quick analysis without storage ===\\n")
-
-# Create a fresh tidymatrix for this example
-quick_tm <- tidymatrix(expression[1:50, 1:10], gene_data[1:50, ])
-
-# Add PCA scores without storing the full object
-quick_tm <- quick_tm |>
-  activate(rows) |>
-  add_pca_scores(n = 2, name = "PC", center = TRUE)
-
-cat("PC columns added:", paste(grep("PC_", names(quick_tm$row_data), value = TRUE), collapse = ", "), "\\n")
-cat("Stored analyses:", length(list_analyses(quick_tm)), "\\n")
-
-# Similarly for clustering
-quick_tm <- quick_tm |>
-  activate(rows) |>
-  add_clusters(method = "hclust", k = 3, name = "cluster")
-
-cat("Cluster column added:", "cluster_cluster" %in% names(quick_tm$row_data), "\\n")
-cat("Stored analyses:", length(list_analyses(quick_tm)), "\\n")
-
-# =============================================================================
-# Example 6: Complex workflow
-# =============================================================================
-
-cat("\\n=== Example 6: Complete analysis workflow ===\\n")
+cat("\\n=== Example 5: Complete analysis workflow ===\\n")
 
 # Start fresh
 workflow_tm <- tidymatrix(expression, gene_data, sample_data) |>
