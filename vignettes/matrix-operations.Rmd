@@ -1,0 +1,234 @@
+---
+title: "Matrix Operations and Transformations"
+author: "tidymatrix package"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Matrix Operations and Transformations}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+This vignette demonstrates matrix transformation and normalization operations in tidymatrix.
+
+```{r load-packages}
+library(tidymatrix)
+library(dplyr)
+```
+
+## Creating Example Data
+
+```{r create-data}
+set.seed(42)
+n_genes <- 50
+n_samples <- 12
+
+# Simulate expression matrix (all positive values)
+expression <- matrix(abs(rnorm(n_genes * n_samples, mean = 100, sd = 50)),
+                     nrow = n_genes, ncol = n_samples)
+
+# Add some genes with high expression
+expression[1:10, ] <- expression[1:10, ] + 200
+
+# Create metadata
+gene_data <- data.frame(
+  gene_id = paste0("Gene_", 1:n_genes),
+  type = c(rep("housekeeping", 10), rep("regulated", 40))
+)
+
+sample_data <- data.frame(
+  sample_id = paste0("Sample_", 1:n_samples),
+  condition = rep(c("Control", "Treatment"), each = 6),
+  batch = rep(1:3, each = 4)
+)
+
+expr_tm <- tidymatrix(expression, gene_data, sample_data)
+
+cat("Original data range:", range(expr_tm$matrix), "\n")
+```
+
+## Log Transformation
+
+Use `log_transform()` to log-transform expression data:
+
+```{r log-transform}
+expr_log <- expr_tm |>
+  activate(matrix) |>
+  log_transform(base = 2, offset = 1)
+
+cat("After log2(x + 1):\n")
+cat("  Range:", range(expr_log$matrix), "\n")
+cat("  Mean:", mean(expr_log$matrix), "\n")
+```
+
+## Row Scaling (Z-score)
+
+Scale rows to have mean = 0 and sd = 1:
+
+```{r row-scale}
+expr_scaled <- expr_tm |>
+  activate(matrix) |>
+  log_transform(base = 2, offset = 1) |>
+  activate(rows) |>
+  scale()
+
+# Verify scaling
+row_means <- rowMeans(expr_scaled$matrix)
+row_sds <- apply(expr_scaled$matrix, 1, sd)
+
+cat("After row scaling:\n")
+cat("  Row means (should be ~0):", range(row_means), "\n")
+cat("  Row SDs (should be ~1):", range(row_sds), "\n")
+```
+
+## Column Centering
+
+Center columns (samples) to have mean = 0:
+
+```{r column-center}
+expr_centered <- expr_tm |>
+  activate(columns) |>
+  center()
+
+col_means <- colMeans(expr_centered$matrix)
+cat("After column centering:\n")
+cat("  Column means (should be ~0):", range(col_means), "\n")
+```
+
+## Column Scaling
+
+Scale columns (samples):
+
+```{r column-scale}
+expr_col_scaled <- expr_tm |>
+  activate(columns) |>
+  scale()
+
+col_means <- colMeans(expr_col_scaled$matrix)
+col_sds <- apply(expr_col_scaled$matrix, 2, sd)
+
+cat("After column scaling:\n")
+cat("  Column means:", range(col_means), "\n")
+cat("  Column SDs:", range(col_sds), "\n")
+```
+
+## Clipping Values
+
+Limit extreme values with `clip_values()`:
+
+```{r clip}
+expr_clipped <- expr_tm |>
+  activate(matrix) |>
+  clip_values(lower = 50, upper = 250)
+
+cat("After clipping to [50, 250]:\n")
+cat("  Range:", range(expr_clipped$matrix), "\n")
+cat("  Values below 50:", sum(expr_tm$matrix < 50), "→",
+    sum(expr_clipped$matrix < 50), "\n")
+cat("  Values above 250:", sum(expr_tm$matrix > 250), "→",
+    sum(expr_clipped$matrix > 250), "\n")
+```
+
+## Transpose
+
+Swap rows and columns with `transpose()`:
+
+```{r transpose}
+expr_transposed <- expr_tm |>
+  transpose()
+
+cat("Original dimensions:", nrow(expr_tm$matrix), "×", ncol(expr_tm$matrix), "\n")
+cat("After transpose:", nrow(expr_transposed$matrix), "×", ncol(expr_transposed$matrix), "\n")
+
+# Note: row_data and col_data are swapped
+cat("\nOriginal row_data rows:", nrow(expr_tm$row_data), "\n")
+cat("Transposed col_data rows:", nrow(expr_transposed$col_data), "\n")
+```
+
+## Complete Normalization Workflow
+
+Chain multiple operations for a complete normalization pipeline:
+
+```{r complete-workflow}
+expr_normalized <- expr_tm |>
+  # Log transform
+  activate(matrix) |>
+  log_transform(base = 2, offset = 1) |>
+  # Filter low-variance genes
+  activate(rows) |>
+  mutate(variance = apply(expr_tm$matrix, 1, var)) |>
+  filter(variance > median(variance)) |>
+  # Scale genes
+  activate(rows) |>
+  scale()
+
+cat("Normalized data:\n")
+cat("  Genes:", nrow(expr_normalized$matrix), "\n")
+cat("  Range:", range(expr_normalized$matrix), "\n")
+```
+
+## Extracting the Matrix
+
+After transformations, extract the matrix:
+
+```{r extract-matrix}
+# Get the matrix
+normalized_matrix <- expr_normalized$matrix
+
+# Or use pull_active()
+expr_normalized <- expr_normalized |> activate(matrix)
+same_matrix <- pull_active(expr_normalized)
+
+identical(normalized_matrix, same_matrix)
+```
+
+## Comparing Before and After
+
+```{r comparison}
+# Original data statistics
+cat("Original data:\n")
+cat("  Mean per gene:", range(rowMeans(expr_tm$matrix)), "\n")
+cat("  SD per gene:", range(apply(expr_tm$matrix, 1, sd)), "\n")
+
+# Normalized data statistics
+cat("\nNormalized data:\n")
+cat("  Mean per gene:", range(rowMeans(expr_normalized$matrix)), "\n")
+cat("  SD per gene:", range(apply(expr_normalized$matrix, 1, sd)), "\n")
+```
+
+## Custom Transformations
+
+Apply custom functions to the matrix:
+
+```{r custom-transform}
+# Square root transformation (manual)
+expr_custom <- expr_tm
+expr_custom$matrix <- sqrt(expr_custom$matrix)
+
+cat("After sqrt transformation:\n")
+cat("  Range:", range(expr_custom$matrix), "\n")
+```
+
+## Summary
+
+tidymatrix provides several matrix transformation operations:
+
+| Operation | Function | Use Case |
+|-----------|----------|----------|
+| **Log transform** | `log_transform()` | Normalize skewed expression data |
+| **Row scaling** | `activate(rows) |> scale()` | Z-score normalization per gene |
+| **Column scaling** | `activate(columns) |> scale()` | Normalize samples |
+| **Row centering** | `activate(rows) |> center()` | Center genes to mean = 0 |
+| **Column centering** | `activate(columns) |> center()` | Center samples to mean = 0 |
+| **Clipping** | `clip_values()` | Remove outliers |
+| **Transpose** | `transpose()` | Swap rows and columns |
+
+All operations preserve the tidymatrix structure and can be chained with data manipulation operations for powerful preprocessing workflows.

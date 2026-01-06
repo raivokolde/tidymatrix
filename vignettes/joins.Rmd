@@ -1,0 +1,260 @@
+---
+title: "Joining External Data with tidymatrix"
+author: "tidymatrix package"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Joining External Data with tidymatrix}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+This vignette demonstrates how to use join operations to add external data to your tidymatrix objects.
+
+```{r load-packages}
+library(tidymatrix)
+library(dplyr)
+```
+
+## Introduction to Joins
+
+tidymatrix supports all six dplyr join operations:
+- `left_join()` - Keep all rows from tidymatrix
+- `right_join()` - Keep all rows from external data
+- `inner_join()` - Keep only matching rows
+- `full_join()` - Keep all rows from both
+- `semi_join()` - Filter to matching rows (no new columns)
+- `anti_join()` - Filter to non-matching rows
+
+## Creating Example Data
+
+```{r create-data}
+set.seed(42)
+
+# Gene expression data
+expression <- matrix(rnorm(100), nrow = 10, ncol = 10)
+
+gene_data <- data.frame(
+  gene_id = paste0("Gene_", 1:10),
+  chromosome = sample(c("chr1", "chr2", "chr3"), 10, replace = TRUE)
+)
+
+sample_data <- data.frame(
+  sample_id = paste0("Sample_", 1:10),
+  patient = paste0("P", rep(1:5, each = 2))
+)
+
+tm <- tidymatrix(expression, gene_data, sample_data)
+print(tm)
+```
+
+## Left Join: Adding Gene Annotations
+
+The most common use case is adding external annotations:
+
+```{r left-join}
+# External gene annotations
+gene_annotations <- data.frame(
+  gene_id = paste0("Gene_", c(1, 2, 3, 4, 5, 11, 12)),
+  gene_name = c("BRCA1", "TP53", "EGFR", "KRAS", "MYC", "NEWGENE1", "NEWGENE2"),
+  pathway = c("DNA repair", "Apoptosis", "Signaling", "Signaling",
+              "Transcription", "Unknown", "Unknown")
+)
+
+# Add annotations to genes
+tm_annotated <- tm |>
+  activate(rows) |>
+  left_join(gene_annotations, by = "gene_id")
+
+# Check the results
+print(tm_annotated$row_data)
+```
+
+Note: Genes 11 and 12 from external data are not in our matrix, so they're ignored. Genes 6-10 don't have annotations, so they get NA values.
+
+## Inner Join: Keep Only Annotated Genes
+
+To keep only genes with annotations:
+
+```{r inner-join}
+tm_inner <- tm |>
+  activate(rows) |>
+  inner_join(gene_annotations, by = "gene_id")
+
+cat("Original genes:", nrow(tm$matrix), "\n")
+cat("Annotated genes:", nrow(tm_inner$matrix), "\n")
+
+print(tm_inner$row_data)
+```
+
+## Right Join: Add New Genes
+
+To add genes from external data (new rows filled with NA):
+
+```{r right-join}
+tm_right <- tm |>
+  activate(rows) |>
+  right_join(gene_annotations, by = "gene_id")
+
+cat("Original genes:", nrow(tm$matrix), "\n")
+cat("After right join:", nrow(tm_right$matrix), "\n")
+
+# New genes have NA values
+print(tm_right$matrix[11:12, 1:5])
+```
+
+## Full Join: Keep All Genes
+
+To keep genes from both sources:
+
+```{r full-join}
+tm_full <- tm |>
+  activate(rows) |>
+  full_join(gene_annotations, by = "gene_id")
+
+cat("After full join:", nrow(tm_full$matrix), "\n")
+
+print(tm_full$row_data)
+```
+
+## Semi Join: Filter Without Adding Columns
+
+To filter to genes that have annotations without adding new columns:
+
+```{r semi-join}
+tm_semi <- tm |>
+  activate(rows) |>
+  semi_join(gene_annotations, by = "gene_id")
+
+cat("Genes with annotations:", nrow(tm_semi$matrix), "\n")
+
+# No new columns added
+print(tm_semi$row_data)
+```
+
+## Anti Join: Find Missing Annotations
+
+To find genes that lack annotations:
+
+```{r anti-join}
+tm_anti <- tm |>
+  activate(rows) |>
+  anti_join(gene_annotations, by = "gene_id")
+
+cat("Genes without annotations:", nrow(tm_anti$matrix), "\n")
+
+print(tm_anti$row_data)
+```
+
+## Joining on Columns
+
+All joins work on column metadata too:
+
+```{r column-join}
+# External patient data
+patient_data <- data.frame(
+  patient = paste0("P", 1:6),
+  age = c(45, 62, 38, 55, 48, 70),
+  treatment = c("A", "B", "A", "B", "A", "B")
+)
+
+# Add patient info to samples
+tm_patients <- tm |>
+  activate(columns) |>
+  left_join(patient_data, by = "patient")
+
+print(tm_patients$col_data)
+```
+
+## Multiple Joins
+
+Chain multiple joins together:
+
+```{r multiple-joins}
+# Add gene annotations and pathway info
+pathway_info <- data.frame(
+  pathway = c("DNA repair", "Apoptosis", "Signaling", "Transcription"),
+  category = c("Maintenance", "Cell death", "Communication", "Regulation"),
+  priority = c("High", "High", "Medium", "Medium")
+)
+
+tm_complete <- tm |>
+  activate(rows) |>
+  left_join(gene_annotations, by = "gene_id") |>
+  left_join(pathway_info, by = "pathway") |>
+  activate(columns) |>
+  left_join(patient_data, by = "patient")
+
+# Now we have comprehensive annotations
+cat("Row metadata columns:", ncol(tm_complete$row_data), "\n")
+cat("Column metadata columns:", ncol(tm_complete$col_data), "\n")
+```
+
+## Analysis Invalidation
+
+**Important**: Joins that change matrix dimensions invalidate stored analyses:
+
+```{r analysis-invalidation}
+# Perform PCA
+tm_pca <- tm |>
+  activate(columns) |>
+  compute_prcomp(name = "sample_pca")
+
+cat("Analyses before join:", paste(list_analyses(tm_pca), collapse = ", "), "\n")
+
+# Join that changes dimensions
+tm_joined <- tm_pca |>
+  activate(rows) |>
+  inner_join(gene_annotations, by = "gene_id")
+
+cat("Analyses after join:", paste(list_analyses(tm_joined), collapse = ", "), "\n")
+cat("\nNote: PCA results in col_data are preserved, but analysis object is removed\n")
+cat("PCA columns still present:", "sample_pca_PC1" %in% names(tm_joined$col_data), "\n")
+```
+
+## Practical Example: Complete Workflow
+
+```{r complete-workflow}
+# Start with expression data
+workflow_tm <- tidymatrix(expression, gene_data, sample_data)
+
+# Add all external annotations
+workflow_tm <- workflow_tm |>
+  activate(rows) |>
+  left_join(gene_annotations, by = "gene_id") |>
+  activate(columns) |>
+  left_join(patient_data, by = "patient")
+
+# Filter to specific pathway and treatment
+filtered <- workflow_tm |>
+  activate(rows) |>
+  filter(pathway == "Signaling") |>
+  activate(columns) |>
+  filter(treatment == "A")
+
+cat("After filtering:\n")
+cat("Genes:", nrow(filtered$matrix), "\n")
+cat("Samples:", ncol(filtered$matrix), "\n")
+
+print(filtered$row_data)
+```
+
+## Summary
+
+tidymatrix join operations:
+
+- **Work on active component** (`activate(rows)` or `activate(columns)`)
+- **Support all dplyr joins** (left, right, inner, full, semi, anti)
+- **Handle dimension changes** (new rows/columns filled with NA)
+- **Preserve metadata columns** but invalidate stored analysis objects
+- **Enable complex workflows** by chaining with other operations
+
+Joins make it easy to integrate external annotations, clinical data, or any other information into your tidymatrix analysis.

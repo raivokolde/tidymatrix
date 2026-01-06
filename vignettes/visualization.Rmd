@@ -1,0 +1,300 @@
+---
+title: "Visualization with tidymatrix"
+author: "tidymatrix package"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Visualization with tidymatrix}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+This vignette demonstrates how to create visualizations from tidymatrix objects using ggplot2 and pheatmap.
+
+```{r load-packages, message=FALSE}
+library(tidymatrix)
+library(dplyr)
+library(ggplot2)
+```
+
+## Creating Example Data
+
+```{r create-data}
+set.seed(123)
+n_genes <- 100
+n_samples <- 20
+
+# Simulate expression with structure
+expression <- matrix(rnorm(n_genes * n_samples), nrow = n_genes, ncol = n_samples)
+expression[1:30, 1:10] <- expression[1:30, 1:10] + 2
+expression[31:60, 11:20] <- expression[31:60, 11:20] + 2
+
+gene_data <- data.frame(
+  gene_id = paste0("Gene_", 1:n_genes),
+  group = sample(c("GroupA", "GroupB", "GroupC"), n_genes, replace = TRUE)
+)
+
+sample_data <- data.frame(
+  sample_id = paste0("Sample_", 1:n_samples),
+  condition = rep(c("Control", "Treatment"), each = 10),
+  batch = rep(1:2, 10)
+)
+
+expr_tm <- tidymatrix(expression, gene_data, sample_data)
+```
+
+## PCA Plots with ggplot2
+
+### Basic PCA Plot
+
+Use `pull_active()` or `as_tibble()` to extract data for ggplot:
+
+```{r pca-basic}
+expr_tm |>
+  activate(columns) |>
+  compute_prcomp(center = TRUE, scale. = TRUE) |>
+  as_tibble() |>
+  ggplot(aes(x = column_pca_PC1, y = column_pca_PC2, color = condition)) +
+    geom_point(size = 3) +
+    labs(title = "PCA of Samples",
+         x = "PC1", y = "PC2") +
+    theme_minimal()
+```
+
+### PCA with Labels
+
+```{r pca-labels}
+expr_tm |>
+  activate(columns) |>
+  compute_prcomp(center = TRUE, scale. = TRUE) |>
+  as_tibble() |>
+  ggplot(aes(x = column_pca_PC1, y = column_pca_PC2, color = condition)) +
+    geom_point(size = 3) +
+    geom_text(aes(label = sample_id), hjust = -0.2, size = 2.5) +
+    labs(title = "PCA of Samples with Labels") +
+    theme_minimal()
+```
+
+### PCA with Multiple Factors
+
+```{r pca-factors}
+expr_tm |>
+  activate(columns) |>
+  compute_prcomp(center = TRUE, scale. = TRUE) |>
+  as_tibble() |>
+  ggplot(aes(x = column_pca_PC1, y = column_pca_PC2,
+             color = condition, shape = factor(batch))) +
+    geom_point(size = 4) +
+    labs(title = "PCA: Condition and Batch Effects",
+         shape = "Batch") +
+    theme_minimal()
+```
+
+## Gene-Level PCA
+
+```{r gene-pca}
+expr_tm |>
+  activate(rows) |>
+  mutate(variance = apply(expression, 1, var)) |>
+  filter(variance > quantile(variance, 0.75)) |>  # Top 25% variable genes
+  compute_prcomp(n_components = 3, center = TRUE, scale. = FALSE) |>
+  as_tibble() |>
+  ggplot(aes(x = row_pca_PC1, y = row_pca_PC2, color = group)) +
+    geom_point(alpha = 0.6, size = 2) +
+    labs(title = "PCA of High-Variance Genes",
+         subtitle = "Top 25% most variable genes") +
+    theme_minimal()
+```
+
+## Using flatten() for Individual Value Plots
+
+The `flatten()` function converts the matrix to long format, perfect for plotting individual values:
+
+```{r flatten-plot}
+# Plot expression values by condition
+expr_tm |>
+  activate(rows) |>
+  filter(gene_id %in% paste0("Gene_", 1:5)) |>  # First 5 genes
+  flatten() |>
+  ggplot(aes(x = sample_id, y = value, color = condition)) +
+    geom_point(size = 2) +
+    facet_wrap(~gene_id, scales = "free_y") +
+    labs(title = "Expression Values for Selected Genes",
+         y = "Expression") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### Boxplots with flatten()
+
+```{r flatten-boxplot}
+expr_tm |>
+  activate(rows) |>
+  filter(gene_id %in% paste0("Gene_", 1:10)) |>
+  flatten() |>
+  ggplot(aes(x = condition, y = value, fill = condition)) +
+    geom_boxplot() +
+    facet_wrap(~gene_id, scales = "free_y", ncol = 5) +
+    labs(title = "Expression by Condition",
+         y = "Expression") +
+    theme_minimal()
+```
+
+## Statistical Results Visualization
+
+After running statistical tests, visualize the results:
+
+```{r stats-viz}
+# Run t-test and create volcano plot
+stats_data <- expr_tm |>
+  activate(rows) |>
+  compute_ttest(group_col = "condition")
+
+stats_data |>
+  mutate(significant = p.adj < 0.05,
+         direction = ifelse(log2fc > 0, "Up", "Down")) |>
+  ggplot(aes(x = log2fc, y = -log10(p.value),
+             color = significant)) +
+    geom_point(alpha = 0.6, size = 2) +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "red") +
+    geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "blue") +
+    scale_color_manual(values = c("grey", "red")) +
+    labs(title = "Volcano Plot",
+         x = "log2 Fold Change",
+         y = "-log10(p-value)") +
+    theme_minimal()
+```
+
+## Heatmaps with pheatmap
+
+Use `plot_pheatmap()` for quick heatmap visualization:
+
+```{r pheatmap, eval=requireNamespace("pheatmap", quietly=TRUE), fig.height=6}
+if (requireNamespace("pheatmap", quietly = TRUE)) {
+  # Simple heatmap
+  expr_tm |>
+    activate(rows) |>
+    filter(gene_id %in% paste0("Gene_", 1:30)) |>
+    plot_pheatmap(scale = "row")
+}
+```
+
+### Heatmap with Annotations
+
+```{r pheatmap-annotated, eval=requireNamespace("pheatmap", quietly=TRUE), fig.height=6}
+if (requireNamespace("pheatmap", quietly = TRUE)) {
+  # Prepare annotation data frames
+  annotation_col <- sample_data |>
+    select(condition, batch) |>
+    as.data.frame()
+  rownames(annotation_col) <- sample_data$sample_id
+
+  annotation_row <- gene_data |>
+    filter(gene_id %in% paste0("Gene_", 1:30)) |>
+    select(group) |>
+    as.data.frame()
+  rownames(annotation_row) <- paste0("Gene_", 1:30)
+
+  # Plot with annotations
+  expr_tm |>
+    activate(rows) |>
+    filter(gene_id %in% paste0("Gene_", 1:30)) |>
+    plot_pheatmap(
+      scale = "row",
+      annotation_col = annotation_col,
+      annotation_row = annotation_row,
+      show_rownames = TRUE,
+      show_colnames = TRUE
+    )
+}
+```
+
+## Clustering Visualization
+
+After clustering, visualize the results:
+
+```{r cluster-viz}
+# Cluster and visualize
+clustered <- expr_tm |>
+  activate(rows) |>
+  compute_hclust(k = 3, name = "clusters")
+
+# Bar plot of cluster sizes
+clustered |>
+  activate(rows) |>
+  count(clusters_cluster) |>
+  as_tibble() |>
+  ggplot(aes(x = clusters_cluster, y = n, fill = clusters_cluster)) +
+    geom_col() +
+    labs(title = "Genes per Cluster",
+         x = "Cluster", y = "Number of Genes") +
+    theme_minimal() +
+    theme(legend.position = "none")
+```
+
+## Complete Workflow Example
+
+```{r complete-workflow, fig.height=6}
+# Comprehensive analysis with visualization
+workflow_result <- expr_tm |>
+  # Normalize
+  activate(matrix) |>
+  log_transform(base = 2, offset = 1) |>
+  # Filter high-variance genes
+  activate(rows) |>
+  mutate(variance = apply(expr_tm$matrix, 1, var)) |>
+  filter(variance > quantile(variance, 0.5)) |>
+  # Run statistics
+  compute_ttest(group_col = "condition", add_to_data = TRUE) |>
+  # PCA
+  activate(columns) |>
+  compute_prcomp(name = "pca", center = TRUE, scale. = TRUE)
+
+# Plot PCA
+p1 <- workflow_result |>
+  as_tibble() |>
+  ggplot(aes(x = pca_PC1, y = pca_PC2, color = condition)) +
+    geom_point(size = 3) +
+    labs(title = "PCA after Filtering and Normalization") +
+    theme_minimal()
+
+print(p1)
+
+# Plot significant genes
+p2 <- workflow_result |>
+  activate(rows) |>
+  as_tibble() |>
+  filter(p.adj < 0.1) |>
+  ggplot(aes(x = log2fc, y = -log10(p.value))) +
+    geom_point(color = "steelblue", size = 2) +
+    labs(title = "Significant Genes (FDR < 0.1)",
+         x = "log2 Fold Change",
+         y = "-log10(p-value)") +
+    theme_minimal()
+
+print(p2)
+```
+
+## Summary
+
+tidymatrix integrates seamlessly with ggplot2 and pheatmap:
+
+**For ggplot2:**
+- Use `as_tibble()` or `pull_active()` to extract data
+- Works with all tidymatrix operations (filtering, PCA, statistics)
+- Use `flatten()` for individual data point visualization
+
+**For heatmaps:**
+- Use `plot_pheatmap()` for quick heatmaps
+- Automatically handles row/column annotations
+- Works with filtered and transformed data
+
+The pipe-friendly design makes it easy to chain data manipulation, statistical analysis, and visualization in a single workflow.

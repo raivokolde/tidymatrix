@@ -1,0 +1,241 @@
+---
+title: "Row-wise Statistical Analysis"
+author: "tidymatrix package"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Row-wise Statistical Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+This vignette demonstrates the `compute_across()` framework for performing row-wise statistical analyses, including t-tests, correlation, ANOVA, and linear models.
+
+```{r load-packages}
+library(tidymatrix)
+library(dplyr)
+```
+
+## Creating Example Data
+
+```{r create-data}
+set.seed(123)
+expr_matrix <- matrix(rnorm(600, mean = 10, sd = 2), nrow = 60, ncol = 10)
+
+# Row metadata (genes)
+gene_data <- data.frame(
+  gene_id = paste0("Gene_", 1:60),
+  pathway = sample(c("Metabolism", "Signaling", "Transport"), 60, replace = TRUE),
+  chr = sample(paste0("chr", 1:22), 60, replace = TRUE)
+)
+
+# Column metadata (samples)
+sample_data <- data.frame(
+  sample_id = paste0("Sample_", 1:10),
+  condition = rep(c("Control", "Treatment"), each = 5),
+  batch = factor(rep(c("Batch1", "Batch2"), 5)),
+  age = rnorm(10, 50, 10),
+  stringsAsFactors = FALSE
+)
+
+tm <- tidymatrix(expr_matrix, gene_data, sample_data)
+```
+
+## T-test Analysis
+
+### Simple T-test
+
+Use `compute_ttest()` for comparing two groups:
+
+```{r simple-ttest}
+ttest_results <- tm |>
+  activate(rows) |>
+  compute_ttest(group_col = "condition")
+
+head(ttest_results)
+
+# Filter for significant genes (FDR < 0.05)
+sig_genes <- ttest_results |>
+  filter(p.adj < 0.05)
+
+cat("Number of significant genes:", nrow(sig_genes), "\n")
+```
+
+### Custom Analysis with compute_across()
+
+For more control, use `compute_across()` directly:
+
+```{r custom-ttest}
+custom_ttest <- tm |>
+  activate(rows) |>
+  compute_across(
+    fn = function(vals, meta) {
+      ctrl <- vals[meta$condition == "Control"]
+      trt <- vals[meta$condition == "Treatment"]
+
+      test <- t.test(ctrl, trt)
+
+      list(
+        mean_ctrl = mean(ctrl),
+        mean_trt = mean(trt),
+        log2fc = log2(mean(trt) / mean(ctrl)),
+        p.value = test$p.value,
+        ci_lower = test$conf.int[1],
+        ci_upper = test$conf.int[2]
+      )
+    }
+  )
+
+head(custom_ttest)
+```
+
+### Adding Results to Row Metadata
+
+```{r add-to-data}
+tm_with_stats <- tm |>
+  activate(rows) |>
+  compute_ttest(group_col = "condition", add_to_data = TRUE)
+
+# Now gene_data has statistics columns
+head(tm_with_stats$row_data)
+```
+
+## Linear Models
+
+### Simple Linear Regression
+
+```{r lm-simple}
+lm_results <- tm |>
+  activate(rows) |>
+  compute_lm_simple(predictor_col = "age")
+
+head(lm_results)
+
+# Genes with significant age association
+age_genes <- lm_results |>
+  filter(p.adj < 0.1)
+
+cat("Genes associated with age:", nrow(age_genes), "\n")
+```
+
+### Multiple Predictors
+
+```{r lm-multiple}
+lm_multi <- tm |>
+  activate(rows) |>
+  compute_lm(formula = ~ condition + batch + age)
+
+head(lm_multi)
+```
+
+## Correlation Analysis
+
+### Correlation with Metadata
+
+```{r correlation}
+cor_results <- tm |>
+  activate(rows) |>
+  compute_correlation(predictor_col = "age", method = "pearson")
+
+head(cor_results)
+
+# Highly correlated genes
+high_cor <- cor_results |>
+  filter(abs(cor) > 0.5)
+
+cat("Genes with |correlation| > 0.5:", nrow(high_cor), "\n")
+```
+
+## ANOVA and Kruskal-Wallis
+
+### One-way ANOVA
+
+```{r anova}
+# Create multi-level factor
+sample_data_multi <- sample_data |>
+  mutate(treatment = case_when(
+    condition == "Control" ~ "Control",
+    batch == "Batch1" ~ "Treatment_A",
+    TRUE ~ "Treatment_B"
+  ))
+
+tm_multi <- tidymatrix(expr_matrix, gene_data, sample_data_multi)
+
+anova_results <- tm_multi |>
+  activate(rows) |>
+  compute_anova(group_col = "treatment")
+
+head(anova_results)
+```
+
+### Non-parametric Alternative
+
+```{r kruskal}
+kruskal_results <- tm_multi |>
+  activate(rows) |>
+  compute_kruskal(group_col = "treatment")
+
+head(kruskal_results)
+```
+
+## Wilcoxon Test
+
+For non-parametric two-group comparison:
+
+```{r wilcox}
+wilcox_results <- tm |>
+  activate(rows) |>
+  compute_wilcox(group_col = "condition")
+
+head(wilcox_results)
+```
+
+## Chaining Multiple Analyses
+
+Combine different statistical tests:
+
+```{r chaining}
+combined_results <- tm |>
+  activate(rows) |>
+  compute_ttest(group_col = "condition", add_to_data = TRUE) |>
+  compute_correlation(predictor_col = "age", add_to_data = TRUE)
+
+# Now row_data has both t-test and correlation results
+head(combined_results$row_data)
+```
+
+## Filtering Based on Statistics
+
+Use statistical results to filter genes:
+
+```{r filter-stats}
+interesting_genes <- tm |>
+  activate(rows) |>
+  compute_ttest(group_col = "condition", add_to_data = TRUE) |>
+  filter(p.adj < 0.05, abs(log2fc) > 1) |>
+  arrange(p.adj)
+
+cat("Significant genes with |log2FC| > 1:", nrow(interesting_genes$row_data), "\n")
+head(interesting_genes$row_data)
+```
+
+## Summary
+
+The tidymatrix package provides comprehensive row-wise statistical analysis:
+
+- **T-tests**: `compute_ttest()` for two-group comparisons
+- **Linear models**: `compute_lm()` and `compute_lm_simple()` for regression
+- **Correlation**: `compute_correlation()` with multiple methods
+- **ANOVA**: `compute_anova()` for multi-group comparisons
+- **Non-parametric**: `compute_wilcox()` and `compute_kruskal()`
+- **Custom analyses**: `compute_across()` for any row-wise computation
+
+All results can be added directly to row metadata with `add_to_data = TRUE` for seamless integration with downstream analysis.

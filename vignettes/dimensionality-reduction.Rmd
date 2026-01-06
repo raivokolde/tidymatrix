@@ -1,0 +1,233 @@
+---
+title: "Dimensionality Reduction Methods"
+author: "tidymatrix package"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Dimensionality Reduction Methods}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+This vignette demonstrates dimensionality reduction methods available in tidymatrix: MDS, t-SNE, and UMAP.
+
+```{r load-packages}
+library(tidymatrix)
+library(dplyr)
+```
+
+## Creating Example Data
+
+```{r create-data}
+set.seed(42)
+n_genes <- 100
+n_samples <- 20
+
+# Create expression matrix
+expression <- matrix(rnorm(n_genes * n_samples), nrow = n_genes, ncol = n_samples)
+
+# Add structure
+expression[1:30, 1:10] <- expression[1:30, 1:10] + 2
+expression[31:60, 11:20] <- expression[31:60, 11:20] + 2
+
+# Metadata
+gene_data <- data.frame(
+  gene_id = paste0("Gene_", 1:n_genes),
+  category = rep(c("TypeA", "TypeB", "TypeC"), length.out = n_genes)
+)
+
+sample_data <- data.frame(
+  sample_id = paste0("Sample_", 1:n_samples),
+  condition = rep(c("Control", "Treatment"), each = 10),
+  batch = rep(c("B1", "B2"), 10)
+)
+
+tm <- tidymatrix(expression, gene_data, sample_data)
+```
+
+## Classical Multidimensional Scaling (MDS)
+
+MDS is a fast, deterministic method for dimensionality reduction:
+
+```{r mds}
+tm_mds <- tm |>
+  activate(columns) |>
+  compute_mds(k = 2, name = "sample_mds")
+
+# Check added columns
+cat("MDS coordinates added:\n")
+print(names(tm_mds$col_data))
+
+# View the results
+head(tm_mds$col_data)
+```
+
+### Accessing Stored MDS Object
+
+```{r mds-object}
+# Get full MDS result
+mds_obj <- get_analysis(tm_mds, "sample_mds")
+cat("MDS object components:", names(mds_obj), "\n")
+```
+
+## t-SNE (t-distributed Stochastic Neighbor Embedding)
+
+t-SNE excels at revealing local structure in high-dimensional data:
+
+```{r tsne, eval=requireNamespace("Rtsne", quietly=TRUE)}
+set.seed(42)
+tm_tsne <- tm |>
+  activate(columns) |>
+  compute_tsne(dims = 2, name = "sample_tsne", perplexity = 5, verbose = FALSE)
+
+# View results
+head(tm_tsne$col_data)
+```
+
+Note: t-SNE is stochastic. Use `set.seed()` for reproducibility.
+
+### t-SNE Parameters
+
+The `perplexity` parameter controls local vs global structure:
+
+```{r tsne-params, eval=requireNamespace("Rtsne", quietly=TRUE)}
+# Lower perplexity emphasizes local structure
+set.seed(42)
+tm_tsne_low <- tm |>
+  activate(columns) |>
+  compute_tsne(dims = 2, name = "tsne_low", perplexity = 3,
+               verbose = FALSE, check_duplicates = FALSE)
+
+# Higher perplexity preserves more global structure
+set.seed(42)
+tm_tsne_high <- tm |>
+  activate(columns) |>
+  compute_tsne(dims = 2, name = "tsne_high", perplexity = 8,
+               verbose = FALSE, check_duplicates = FALSE)
+
+cat("Different perplexity values create different embeddings\n")
+```
+
+## UMAP (Uniform Manifold Approximation and Projection)
+
+UMAP is faster than t-SNE and often better preserves global structure:
+
+```{r umap, eval=requireNamespace("umap", quietly=TRUE)}
+tm_umap <- tm |>
+  activate(columns) |>
+  compute_umap(n_components = 2, name = "sample_umap",
+               n_neighbors = 10, random_state = 42)
+
+# View results
+head(tm_umap$col_data)
+```
+
+### UMAP Parameters
+
+- `n_neighbors`: Controls local vs global structure (larger = more global)
+- `min_dist`: Minimum distance between points (smaller = tighter clusters)
+
+```{r umap-params, eval=requireNamespace("umap", quietly=TRUE)}
+tm_umap_custom <- tm |>
+  activate(columns) |>
+  compute_umap(n_components = 2, n_neighbors = 5, min_dist = 0.05,
+               random_state = 42, name = "umap_tight")
+
+cat("Custom UMAP parameters create tighter clustering\n")
+```
+
+## Comparing Methods
+
+All three methods can be applied to the same data:
+
+```{r compare-methods}
+tm_all <- tm |>
+  activate(columns) |>
+  compute_mds(k = 2, name = "mds")
+
+# Add t-SNE and UMAP if packages available
+if (requireNamespace("Rtsne", quietly = TRUE)) {
+  set.seed(42)
+  tm_all <- tm_all |>
+    compute_tsne(dims = 2, name = "tsne", perplexity = 5,
+                 verbose = FALSE, check_duplicates = FALSE)
+}
+
+if (requireNamespace("umap", quietly = TRUE)) {
+  tm_all <- tm_all |>
+    compute_umap(n_components = 2, name = "umap",
+                 n_neighbors = 10, random_state = 42)
+}
+
+# View all coordinates
+head(tm_all$col_data)
+```
+
+## Gene-Level Dimensionality Reduction
+
+Dimensionality reduction works on rows (genes) too:
+
+```{r gene-level}
+tm_genes <- tm |>
+  activate(rows) |>
+  compute_mds(k = 2, name = "gene_mds")
+
+# Filter genes by their embedding
+interesting_genes <- tm_genes |>
+  activate(rows) |>
+  filter(gene_mds_1 > median(gene_mds_1))
+
+cat("Genes in right half of MDS space:", nrow(interesting_genes$matrix), "\n")
+```
+
+## Multiple Dimensions
+
+Request more than 2 dimensions for comprehensive analysis:
+
+```{r multi-dim}
+tm_3d <- tm |>
+  activate(columns) |>
+  compute_mds(k = 3, name = "mds3d")
+
+# Check all three dimensions
+cat("MDS columns:", grep("mds3d", names(tm_3d$col_data), value = TRUE), "\n")
+```
+
+## Using with flatten()
+
+Combine dimensionality reduction with flatten() for visualization:
+
+```{r flatten-example, eval=FALSE}
+# After computing dimensionality reduction
+tm |>
+  activate(columns) |>
+  compute_mds(k = 2) |>
+  flatten() |>
+  ggplot(aes(x = sample_id, y = value, color = column_mds_1)) +
+  geom_point()
+```
+
+## Summary
+
+tidymatrix provides three dimensionality reduction methods:
+
+| Method | Speed | Deterministic | Best For |
+|--------|-------|---------------|----------|
+| **MDS** | Fast | Yes | Quick exploration, no dependencies |
+| **t-SNE** | Slow | No (use seed) | Local structure, visualization |
+| **UMAP** | Medium | No (use seed) | Balanced local/global, faster than t-SNE |
+
+**When to use each:**
+- **MDS**: Quick exploration, always available
+- **t-SNE**: Publication-quality visualizations, small to medium datasets
+- **UMAP**: Large datasets, need for global structure
+
+All methods integrate seamlessly with tidymatrix operations and can be applied to both rows and columns.
