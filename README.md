@@ -19,8 +19,7 @@ This package is inspired by `tidygraph`'s approach to handling network data. Jus
 ## Installation
 
 ```r
-# Install from source (when available on CRAN, use install.packages)
-devtools::install_local("path/to/tidymatrix")
+devtools::install_github("raivokolde/tidymatrix")
 ```
 
 ## Core Concepts
@@ -80,44 +79,6 @@ tm_filtered <- tm %>%
 
 print(tm_filtered)
 ```
-
-## Use Cases
-
-### 1. Survey/Questionnaire Analysis
-- **Matrix**: Response values
-- **Rows**: Respondent demographics
-- **Columns**: Question metadata
-
-### 2. Gene Expression Analysis
-- **Matrix**: Expression values
-- **Rows**: Gene annotations (symbols, pathways, chromosomes)
-- **Columns**: Sample information (condition, batch, patient)
-
-### 3. Experimental Data
-- **Matrix**: Measurements
-- **Rows**: Feature metadata
-- **Columns**: Experimental conditions
-
-## Comparison to Existing Solutions
-
-### vs. SummarizedExperiment (Bioconductor)
-- `tidymatrix` provides a tidyverse-friendly interface
-- Simpler for users already familiar with dplyr
-- Designed for general matrix+metadata use cases, not just genomics
-
-### vs. Managing three objects manually
-- No need to keep indices synchronized
-- Operations automatically update all components
-- Cleaner, more expressive code
-
-## Future Development
-
-Planned features:
-- Matrix operations while preserving metadata
-- Integration with ggplot2 for visualization
-- Heatmap functionality (pheatmap-style with ggplot2)
-- Support for joining tidymatrix objects
-- Grouping and summarization operations
 
 ## Related Packages
 
