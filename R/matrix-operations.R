@@ -176,6 +176,7 @@ center.tidymatrix <- function(x) {
 #' @param fn A function to apply. When matrix is active, receives the full
 #'   matrix. When rows or columns are active, receives one row or column
 #'   vector at a time. Must return values with the same dimensions.
+#' @param ... Additional arguments passed to \code{fn}.
 #'
 #' @return A tidymatrix object with the transformed matrix
 #' @export
@@ -198,7 +199,12 @@ center.tidymatrix <- function(x) {
 #' tm |>
 #'   activate(columns) |>
 #'   transform_matrix(\(x) (x - min(x)) / (max(x) - min(x)))
-transform_matrix <- function(.data, fn) {
+#'
+#' # Passing extra arguments: round to 2 decimal places
+#' tm |>
+#'   activate(matrix) |>
+#'   transform_matrix(round, digits = 2)
+transform_matrix <- function(.data, fn, ...) {
   if (!is_tidymatrix(.data)) {
     stop("transform_matrix() can only be used on tidymatrix objects", call. = FALSE)
   }
@@ -211,12 +217,12 @@ transform_matrix <- function(.data, fn) {
   original_dimnames <- dimnames(.data$matrix)
 
   if (.data$active == "matrix") {
-    .data$matrix <- fn(.data$matrix)
+    .data$matrix <- fn(.data$matrix, ...)
   } else if (.data$active == "rows") {
-    rows <- lapply(seq_len(nrow(.data$matrix)), function(i) fn(.data$matrix[i, ]))
+    rows <- lapply(seq_len(nrow(.data$matrix)), function(i) fn(.data$matrix[i, ], ...))
     .data$matrix <- do.call(rbind, rows)
   } else if (.data$active == "columns") {
-    cols <- lapply(seq_len(ncol(.data$matrix)), function(j) fn(.data$matrix[, j]))
+    cols <- lapply(seq_len(ncol(.data$matrix)), function(j) fn(.data$matrix[, j], ...))
     .data$matrix <- do.call(cbind, cols)
   }
 

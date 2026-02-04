@@ -409,6 +409,33 @@ test_that("transform_matrix applies anonymous function element-wise", {
   expect_equal(result$matrix, mat^2 + 1)
 })
 
+## Extra arguments via ... ----
+
+test_that("transform_matrix passes ... element-wise", {
+  mat <- matrix(c(1.234, 5.678, 9.012, 3.456), nrow = 2, ncol = 2)
+  tm <- tidymatrix(mat)
+
+  result <- tm |> activate(matrix) |> transform_matrix(round, digits = 1)
+  expect_equal(result$matrix, round(mat, digits = 1))
+})
+
+test_that("transform_matrix passes ... row-wise", {
+  mat <- matrix(c(1.111, 2.222, 3.333, 4.444, 5.555, 6.666), nrow = 2, ncol = 3)
+  tm <- tidymatrix(mat)
+
+  result <- tm |> activate(rows) |> transform_matrix(round, digits = 0)
+  expect_equal(result$matrix[1, ], c(1, 3, 6))
+  expect_equal(result$matrix[2, ], c(2, 4, 7))
+})
+
+test_that("transform_matrix passes ... column-wise", {
+  mat <- matrix(c(1.111, 2.222, 3.333, 4.444), nrow = 2, ncol = 2)
+  tm <- tidymatrix(mat)
+
+  result <- tm |> activate(columns) |> transform_matrix(round, digits = 2)
+  expect_equal(result$matrix, round(mat, digits = 2))
+})
+
 test_that("transform_matrix element-wise preserves dimensions", {
   mat <- matrix(1:12, nrow = 3, ncol = 4)
   tm <- tidymatrix(mat)

@@ -4,7 +4,7 @@
 \alias{transform_matrix}
 \title{Apply a function to the matrix}
 \usage{
-transform_matrix(.data, fn)
+transform_matrix(.data, fn, ...)
 }
 \arguments{
 \item{.data}{A tidymatrix object}
@@ -12,6 +12,8 @@ transform_matrix(.data, fn)
 \item{fn}{A function to apply. When matrix is active, receives the full
 matrix. When rows or columns are active, receives one row or column
 vector at a time. Must return values with the same dimensions.}
+
+\item{...}{Additional arguments passed to \code{fn}.}
 }
 \value{
 A tidymatrix object with the transformed matrix
@@ -47,4 +49,9 @@ tm |>
 tm |>
   activate(columns) |>
   transform_matrix(\(x) (x - min(x)) / (max(x) - min(x)))
+
+# Passing extra arguments: round to 2 decimal places
+tm |>
+  activate(matrix) |>
+  transform_matrix(round, digits = 2)
 }
