@@ -206,15 +206,24 @@ cat("  SD per gene:", range(apply(expr_normalized$matrix, 1, sd)), "\n")
 
 ## Custom Transformations
 
-Apply custom functions to the matrix:
+Apply any function element-wise, or row/column-wise based on activation:
 
 ```{r custom-transform}
-# Square root transformation (manual)
-expr_custom <- expr_tm
-expr_custom$matrix <- sqrt(expr_custom$matrix)
+# Element-wise: square root
+expr_sqrt <- expr_tm |>
+  activate(matrix) |>
+  transform_matrix(sqrt)
 
 cat("After sqrt transformation:\n")
-cat("  Range:", range(expr_custom$matrix), "\n")
+cat("  Range:", range(expr_sqrt$matrix), "\n")
+
+# Row-wise: rank values within each gene
+expr_ranked <- expr_tm |>
+  activate(rows) |>
+  transform_matrix(rank)
+
+cat("\nAfter row-wise ranking:\n")
+cat("  Range:", range(expr_ranked$matrix), "\n")
 ```
 
 ## Summary
@@ -229,6 +238,9 @@ tidymatrix provides several matrix transformation operations:
 | **Row centering** | `activate(rows) |> center()` | Center genes to mean = 0 |
 | **Column centering** | `activate(columns) |> center()` | Center samples to mean = 0 |
 | **Clipping** | `clip_values()` | Remove outliers |
+| **Custom (element-wise)** | `activate(matrix) \|> transform_matrix()` | Apply any function to matrix |
+| **Custom (row-wise)** | `activate(rows) \|> transform_matrix()` | Apply function per row |
+| **Custom (column-wise)** | `activate(columns) \|> transform_matrix()` | Apply function per column |
 | **Transpose** | `t()` | Swap rows and columns |
 
 All operations preserve the tidymatrix structure and can be chained with data manipulation operations for powerful preprocessing workflows.

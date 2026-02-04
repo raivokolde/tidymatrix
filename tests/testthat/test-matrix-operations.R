@@ -166,39 +166,6 @@ test_that("center errors when matrix is active", {
   )
 })
 
-# Test transform ----
-
-test_that("transform applies function to matrix", {
-  mat <- matrix(1:12, nrow = 3, ncol = 4)
-  tm <- tidymatrix(mat)
-
-  tm_squared <- tm |>
-    activate(matrix) |>
-    transform(.^2)
-
-  expect_equal(tm_squared$matrix, mat^2)
-})
-
-test_that("transform works with log", {
-  mat <- matrix(1:12, nrow = 3, ncol = 4)
-  tm <- tidymatrix(mat)
-
-  tm_log <- tm |>
-    activate(matrix) |>
-    transform(log2(. + 1))
-
-  expect_equal(tm_log$matrix, log2(mat + 1))
-})
-
-test_that("transform errors when matrix not active", {
-  mat <- matrix(1:12, nrow = 3, ncol = 4)
-  tm <- tidymatrix(mat)
-
-  expect_error(
-    tm |> activate(rows) |> transform(.^2),
-    "Cannot transform when matrix is not active"
-  )
-})
 
 # Test add_stats ----
 

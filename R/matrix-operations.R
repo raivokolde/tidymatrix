@@ -158,60 +158,6 @@ center.tidymatrix <- function(x) {
   x
 }
 
-#' Transform matrix values
-#'
-#' Apply an element-wise transformation to the entire matrix. Requires
-#' matrix to be active.
-#'
-#' @param .data A tidymatrix object with matrix active
-#' @param ... Transformation expression using \code{.} to refer to the matrix
-#'
-#' @return A tidymatrix object with transformed matrix
-#' @export
-#'
-#' @examples
-#' mat <- matrix(1:12, nrow = 3, ncol = 4)
-#' tm <- tidymatrix(mat)
-#'
-#' # Log transform
-#' tm_log <- tm |>
-#'   activate(matrix) |>
-#'   transform(log2(. + 1))
-#'
-#' # Square root
-#' tm_sqrt <- tm |>
-#'   activate(matrix) |>
-#'   transform(sqrt(.))
-#'
-#' # Custom transformation
-#' tm_custom <- tm |>
-#'   activate(matrix) |>
-#'   transform(pmin(., 10))  # Cap at 10
-transform.tidymatrix <- function(.data, ...) {
-  if (.data$active != "matrix") {
-    stop(
-      "Cannot transform when matrix is not active.\n",
-      "  Use activate(matrix) first.",
-      call. = FALSE
-    )
-  }
-
-  # Capture the transformation expression
-  dots <- rlang::enquos(...)
-  if (length(dots) != 1) {
-    stop("transform requires exactly one expression", call. = FALSE)
-  }
-  expr <- dots[[1]]
-
-  # Apply transformation using . as placeholder for matrix
-  .data$matrix <- rlang::eval_tidy(expr, data = list(. = .data$matrix))
-
-  # Remove stored analyses since matrix values changed
-  .data <- remove_all_analyses(.data, "transform")
-
-  .data
-}
-
 #' Apply a function to the matrix
 #'
 #' Applies a function to the matrix with behavior determined by the active
