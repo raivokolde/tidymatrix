@@ -201,16 +201,16 @@ tm_3d <- tm |>
 cat("MDS columns:", grep("mds3d", names(tm_3d$col_data), value = TRUE), "\n")
 ```
 
-## Using with flatten()
+## Using with to_long()
 
-Combine dimensionality reduction with flatten() for visualization:
+Combine dimensionality reduction with to_long() for visualization:
 
 ```{r flatten-example, eval=FALSE}
 # After computing dimensionality reduction
 tm |>
   activate(columns) |>
   compute_mds(k = 2) |>
-  flatten() |>
+  to_long() |>
   ggplot(aes(x = sample_id, y = value, color = column_mds_1)) +
   geom_point()
 ```

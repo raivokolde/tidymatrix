@@ -114,16 +114,16 @@ expr_tm |>
     theme_minimal()
 ```
 
-## Using flatten() for Individual Value Plots
+## Using to_long() for Individual Value Plots
 
-The `flatten()` function converts the matrix to long format, perfect for plotting individual values:
+The `to_long()` function converts the matrix to long format, perfect for plotting individual values:
 
 ```{r flatten-plot}
 # Plot expression values by condition
 expr_tm |>
   activate(rows) |>
   filter(gene_id %in% paste0("Gene_", 1:5)) |>  # First 5 genes
-  flatten() |>
+  to_long() |>
   ggplot(aes(x = sample_id, y = value, color = condition)) +
     geom_point(size = 2) +
     facet_wrap(~gene_id, scales = "free_y") +
@@ -133,13 +133,13 @@ expr_tm |>
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-### Boxplots with flatten()
+### Boxplots with to_long()
 
 ```{r flatten-boxplot}
 expr_tm |>
   activate(rows) |>
   filter(gene_id %in% paste0("Gene_", 1:10)) |>
-  flatten() |>
+  to_long() |>
   ggplot(aes(x = condition, y = value, fill = condition)) +
     geom_boxplot() +
     facet_wrap(~gene_id, scales = "free_y", ncol = 5) +
@@ -290,7 +290,7 @@ tidymatrix integrates seamlessly with ggplot2 and pheatmap:
 **For ggplot2:**
 - Use `as_tibble()` or `pull_active()` to extract data
 - Works with all tidymatrix operations (filtering, PCA, statistics)
-- Use `flatten()` for individual data point visualization
+- Use `to_long()` for individual data point visualization
 
 **For heatmaps:**
 - Use `plot_pheatmap()` for quick heatmaps

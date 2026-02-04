@@ -18,7 +18,7 @@
 #'   }
 #'
 #' @details
-#' The flatten operation always converts the entire matrix regardless of which
+#' The conversion always processes the entire matrix regardless of which
 #' component is active. If column names conflict between row_data and col_data,
 #' all row metadata columns are prefixed with "row." and all column metadata
 #' columns are prefixed with "col." to avoid ambiguity.
@@ -29,7 +29,7 @@
 #' @export
 #'
 #' @examples
-#' # Basic flattening
+#' # Basic conversion to long format
 #' mat <- matrix(1:12, nrow = 4, ncol = 3)
 #' row_data <- data.frame(
 #'   gene_id = paste0("Gene", 1:4),
@@ -41,14 +41,14 @@
 #' )
 #' tm <- tidymatrix(mat, row_data, col_data)
 #'
-#' flat <- flatten(tm)
-#' head(flat)
+#' long <- to_long(tm)
+#' head(long)
 #'
 #' \dontrun{
 #' # Use in ggplot2 workflow
 #' library(ggplot2)
 #' tm |>
-#'   flatten() |>
+#'   to_long() |>
 #'   ggplot(aes(x = sample_id, y = value, color = condition)) +
 #'   geom_point() +
 #'   facet_wrap(~gene_id)
@@ -57,7 +57,7 @@
 #' results <- tm |>
 #'   activate(rows) |>
 #'   compute_ttest(group_col = "condition", add_to_data = TRUE) |>
-#'   flatten()
+#'   to_long()
 #'
 #' # Now filter to significant genes and plot
 #' results |>
@@ -66,10 +66,10 @@
 #'   geom_point() +
 #'   facet_wrap(~gene)
 #' }
-flatten <- function(.data, return_tibble = TRUE) {
+to_long <- function(.data, return_tibble = TRUE) {
   # 1. Validate input
   if (!is_tidymatrix(.data)) {
-    stop("flatten() can only be used on tidymatrix objects", call. = FALSE)
+    stop("to_long() can only be used on tidymatrix objects", call. = FALSE)
   }
 
   # 2. Extract dimensions

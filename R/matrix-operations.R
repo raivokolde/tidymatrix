@@ -7,22 +7,19 @@
 NULL
 
 #' @export
-transpose <- function(x) {
-  UseMethod("transpose")
-}
-
-#' @export
 center <- function(x, ...) {
   UseMethod("center")
 }
 
 # Note: scale() is already a base R generic, so we don't need to create it
 # Note: transform() is also a base R generic
+# Note: t() is a base R generic, so we register t.tidymatrix directly
 
 #' Transpose a tidymatrix
 #'
 #' Transpose the matrix and swap row and column metadata. This operation
-#' works regardless of which component is active.
+#' works regardless of which component is active. Uses base R's \code{t()}
+#' generic, so it works correctly even when tidyverse is loaded.
 #'
 #' @param x A tidymatrix object
 #'
@@ -36,9 +33,9 @@ center <- function(x, ...) {
 #' tm <- tidymatrix(mat, row_data, col_data)
 #'
 #' # Transpose: genes × samples → samples × genes
-#' tm_t <- transpose(tm)
+#' tm_t <- t(tm)
 #' dim(tm_t$matrix)  # Now 4 × 3
-transpose.tidymatrix <- function(x) {
+t.tidymatrix <- function(x) {
   # Transpose the matrix
   x$matrix <- t(x$matrix)
 

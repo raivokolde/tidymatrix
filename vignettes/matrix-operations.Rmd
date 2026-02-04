@@ -139,11 +139,11 @@ cat("  Values above 250:", sum(expr_tm$matrix > 250), "→",
 
 ## Transpose
 
-Swap rows and columns with `transpose()`:
+Swap rows and columns with `t()`:
 
 ```{r transpose}
 expr_transposed <- expr_tm |>
-  transpose()
+  t()
 
 cat("Original dimensions:", nrow(expr_tm$matrix), "×", ncol(expr_tm$matrix), "\n")
 cat("After transpose:", nrow(expr_transposed$matrix), "×", ncol(expr_transposed$matrix), "\n")
@@ -229,6 +229,6 @@ tidymatrix provides several matrix transformation operations:
 | **Row centering** | `activate(rows) |> center()` | Center genes to mean = 0 |
 | **Column centering** | `activate(columns) |> center()` | Center samples to mean = 0 |
 | **Clipping** | `clip_values()` | Remove outliers |
-| **Transpose** | `transpose()` | Swap rows and columns |
+| **Transpose** | `t()` | Swap rows and columns |
 
 All operations preserve the tidymatrix structure and can be chained with data manipulation operations for powerful preprocessing workflows.

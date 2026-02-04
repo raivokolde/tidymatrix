@@ -8,7 +8,7 @@ test_that("transpose swaps rows and columns", {
   col_data <- data.frame(sample = paste0("S", 1:4))
   tm <- tidymatrix(mat, row_data, col_data)
 
-  tm_t <- transpose(tm)
+  tm_t <- t(tm)
 
   expect_equal(dim(tm_t$matrix), c(4, 3))
   expect_equal(nrow(tm_t$row_data), 4)
@@ -22,15 +22,15 @@ test_that("transpose works regardless of active component", {
   tm <- tidymatrix(mat)
 
   # Works with matrix active
-  tm1 <- tm |> activate(matrix) |> transpose()
+  tm1 <- tm |> activate(matrix) |> t()
   expect_equal(dim(tm1$matrix), c(4, 3))
 
   # Works with rows active
-  tm2 <- tm |> activate(rows) |> transpose()
+  tm2 <- tm |> activate(rows) |> t()
   expect_equal(dim(tm2$matrix), c(4, 3))
 
   # Works with columns active
-  tm3 <- tm |> activate(columns) |> transpose()
+  tm3 <- tm |> activate(columns) |> t()
   expect_equal(dim(tm3$matrix), c(4, 3))
 })
 
@@ -38,13 +38,13 @@ test_that("transpose updates active state", {
   mat <- matrix(1:12, nrow = 3, ncol = 4)
   tm <- tidymatrix(mat)
 
-  tm_rows <- tm |> activate(rows) |> transpose()
+  tm_rows <- tm |> activate(rows) |> t()
   expect_equal(tm_rows$active, "columns")
 
-  tm_cols <- tm |> activate(columns) |> transpose()
+  tm_cols <- tm |> activate(columns) |> t()
   expect_equal(tm_cols$active, "rows")
 
-  tm_mat <- tm |> activate(matrix) |> transpose()
+  tm_mat <- tm |> activate(matrix) |> t()
   expect_equal(tm_mat$active, "matrix")
 })
 
@@ -59,7 +59,7 @@ test_that("transpose removes stored analyses", {
   expect_equal(list_analyses(tm), "pca")
 
   expect_warning(
-    tm_t <- transpose(tm),
+    tm_t <- t(tm),
     "Removed 1 stored analysis"
   )
 
