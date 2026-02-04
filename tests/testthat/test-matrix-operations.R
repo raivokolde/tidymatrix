@@ -421,3 +421,168 @@ test_that("operations work with grouping", {
   expect_equal(nrow(result$row_data), 2)
   expect_true("avg_mean" %in% names(result$row_data))
 })
+
+# Test transform_matrix ----
+
+## Element-wise (matrix active) ----
+
+test_that("transform_matrix applies base function element-wise", {
+  mat <- matrix(1:12, nrow = 3, ncol = 4)
+  tm <- tidymatrix(mat)
+
+  result <- tm |> activate(matrix) |> transform_matrix(log)
+  expect_equal(result$matrix, log(mat))
+})
+
+test_that("transform_matrix applies anonymous function element-wise", {
+  mat <- matrix(1:12, nrow = 3, ncol = 4)
+  tm <- tidymatrix(mat)
+
+  result <- tm |> activate(matrix) |> transform_matrix(\(x) x^2 + 1)
+  expect_equal(result$matrix, mat^2 + 1)
+})
+
+test_that("transform_matrix element-wise preserves dimensions", {
+  mat <- matrix(1:12, nrow = 3, ncol = 4)
+  tm <- tidymatrix(mat)
+
+  result <- tm |> activate(matrix) |> transform_matrix(exp)
+  expect_equal(dim(result$matrix), c(3, 4))
+})
+
+## Row-wise (rows active) ----
+
+test_that("transform_matrix applies function to each row independently", {
+  mat <- matrix(c(3, 1, 2, 6, 4, 5), nrow = 2, ncol = 3)
+  tm <- tidymatrix(mat)
+
+  result <- tm |> activate(rows) |> transform_matrix(rank)
+  # Row 1: 3, 2, 4 -> ranks 2, 1, 3
+  # Row 2: 1, 6, 5 -> ranks 1, 3, 2
+  expect_equal(as.vector(result$matrix[1, ]), c(2, 1, 3))
+  expect_equal(as.vector(result$matrix[2, ]), c(1, 3, 2))
+})
+
+test_that("transform_matrix row-wise normalization sums to 1", {
+  mat <- matrix(c(2, 4, 6, 8, 10, 12), nrow = 2, ncol = 3)
+  tm <- tidymatrix(mat)
+
+  result <- tm |> activate(rows) |> transform_matrix(\(x) x / sum(x))
+  expect_equal(rowSums(result$matrix), c(1, 1))
+})
+
+## Column-wise (columns active) ----
+
+test_that("transform_matrix applies function to each column independently", {
+  mat <- matrix(c(3, 1, 2, 6, 4, 5), nrow = 3, ncol = 2)
+  tm <- tidymatrix(mat)
+
+  result <- tm |> activate(columns) |> transform_matrix(rank)
+  # Col 1: 3, 1, 2 -> ranks 3, 1, 2
+  # Col 2: 6, 4, 5 -> ranks 3, 1, 2
+  expect_equal(as.vector(result$matrix[, 1]), c(3, 1, 2))
+  expect_equal(as.vector(result$matrix[, 2]), c(3, 1, 2))
+})
+
+test_that("transform_matrix column-wise min-max normalization", {
+  mat <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 3, ncol = 2)
+  tm <- tidymatrix(mat)
+
+  result <- tm |>
+    activate(columns) |>
+    transform_matrix(\(x) (x - min(x)) / (max(x) - min(x)))
+
+  # Each column should span [0, 1]
+  expect_equal(min(result$matrix[, 1]), 0)
+  expect_equal(max(result$matrix[, 1]), 1)
+  expect_equal(min(result$matrix[, 2]), 0)
+  expect_equal(max(result$matrix[, 2]), 1)
+})
+
+## Edge cases ----
+
+test_that("transform_matrix works with single row matrix", {
+  mat <- matrix(c(3, 1, 4, 2), nrow = 1, ncol = 4)
+  tm <- tidymatrix(mat)
+
+  result <- tm |> activate(rows) |> transform_matrix(rank)
+  expect_equal(dim(result$matrix), c(1, 4))
+  expect_equal(as.vector(result$matrix), c(2, 1, 4, 3))
+})
+
+test_that("transform_matrix works with single column matrix", {
+  mat <- matrix(c(3, 1, 2), nrow = 3, ncol = 1)
+  tm <- tidymatrix(mat)
+
+  result <- tm |> activate(columns) |> transform_matrix(rank)
+  expect_equal(dim(result$matrix), c(3, 1))
+  expect_equal(as.vector(result$matrix), c(3, 1, 2))
+})
+
+test_that("transform_matrix preserves dimnames", {
+  mat <- matrix(1:6, nrow = 2, ncol = 3,
+                dimnames = list(c("r1", "r2"), c("c1", "c2", "c3")))
+  tm <- tidymatrix(mat)
+
+  result <- tm |> activate(matrix) |> transform_matrix(log)
+  expect_equal(rownames(result$matrix), c("r1", "r2"))
+  expect_equal(colnames(result$matrix), c("c1", "c2", "c3"))
+})
+
+## Analysis invalidation ----
+
+test_that("transform_matrix removes stored analyses", {
+  mat <- matrix(rnorm(20), nrow = 4, ncol = 5)
+  tm <- tidymatrix(mat)
+
+  tm <- tm |>
+    activate(rows) |>
+    compute_prcomp(name = "pca")
+
+  expect_equal(list_analyses(tm), "pca")
+
+  expect_warning(
+    result <- tm |> activate(matrix) |> transform_matrix(exp),
+    "Removed 1 stored analysis"
+  )
+  expect_equal(length(list_analyses(result)), 0)
+})
+
+## Error cases ----
+
+test_that("transform_matrix errors on non-tidymatrix input", {
+  expect_error(
+    transform_matrix(data.frame(x = 1:3), log),
+    "can only be used on tidymatrix objects"
+  )
+})
+
+test_that("transform_matrix errors when fn is not a function", {
+  mat <- matrix(1:12, nrow = 3, ncol = 4)
+  tm <- tidymatrix(mat)
+
+  expect_error(
+    tm |> activate(matrix) |> transform_matrix(42),
+    "fn must be a function"
+  )
+})
+
+test_that("transform_matrix errors when row fn changes length", {
+  mat <- matrix(1:12, nrow = 3, ncol = 4)
+  tm <- tidymatrix(mat)
+
+  expect_error(
+    tm |> activate(rows) |> transform_matrix(\(x) x[1:2]),
+    "fn must return values with the same dimensions"
+  )
+})
+
+test_that("transform_matrix errors when column fn changes length", {
+  mat <- matrix(1:12, nrow = 3, ncol = 4)
+  tm <- tidymatrix(mat)
+
+  expect_error(
+    tm |> activate(columns) |> transform_matrix(\(x) x[1:2]),
+    "fn must return values with the same dimensions"
+  )
+})

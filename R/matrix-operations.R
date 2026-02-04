@@ -212,6 +212,90 @@ transform.tidymatrix <- function(.data, ...) {
   .data
 }
 
+#' Apply a function to the matrix
+#'
+#' Applies a function to the matrix with behavior determined by the active
+#' component:
+#' \itemize{
+#'   \item \code{activate(matrix)}: \code{fn} is applied to the entire matrix
+#'     at once. Use functions like \code{log}, \code{exp}, \code{sqrt}, or
+#'     anonymous functions like \code{\\(x) x^2}.
+#'   \item \code{activate(rows)}: \code{fn} is applied independently to each
+#'     row vector and must return a vector of the same length.
+#'   \item \code{activate(columns)}: \code{fn} is applied independently to each
+#'     column vector and must return a vector of the same length.
+#' }
+#'
+#' @param .data A tidymatrix object
+#' @param fn A function to apply. When matrix is active, receives the full
+#'   matrix. When rows or columns are active, receives one row or column
+#'   vector at a time. Must return values with the same dimensions.
+#'
+#' @return A tidymatrix object with the transformed matrix
+#' @export
+#'
+#' @examples
+#' mat <- matrix(1:12, nrow = 3, ncol = 4)
+#' tm <- tidymatrix(mat)
+#'
+#' # Element-wise: apply log to entire matrix
+#' tm |>
+#'   activate(matrix) |>
+#'   transform_matrix(log)
+#'
+#' # Row-wise: rank values within each row
+#' tm |>
+#'   activate(rows) |>
+#'   transform_matrix(rank)
+#'
+#' # Column-wise: min-max normalize each column to [0, 1]
+#' tm |>
+#'   activate(columns) |>
+#'   transform_matrix(\(x) (x - min(x)) / (max(x) - min(x)))
+transform_matrix <- function(.data, fn) {
+  if (!is_tidymatrix(.data)) {
+    stop("transform_matrix() can only be used on tidymatrix objects", call. = FALSE)
+  }
+
+  if (!is.function(fn)) {
+    stop("fn must be a function", call. = FALSE)
+  }
+
+  original_dim <- dim(.data$matrix)
+  original_dimnames <- dimnames(.data$matrix)
+
+  if (.data$active == "matrix") {
+    .data$matrix <- fn(.data$matrix)
+  } else if (.data$active == "rows") {
+    rows <- lapply(seq_len(nrow(.data$matrix)), function(i) fn(.data$matrix[i, ]))
+    .data$matrix <- do.call(rbind, rows)
+  } else if (.data$active == "columns") {
+    cols <- lapply(seq_len(ncol(.data$matrix)), function(j) fn(.data$matrix[, j]))
+    .data$matrix <- do.call(cbind, cols)
+  }
+
+  # Coerce back to matrix if fn stripped the class (e.g. returned a plain vector)
+  if (!is.matrix(.data$matrix)) {
+    .data$matrix <- matrix(.data$matrix, nrow = original_dim[1], ncol = original_dim[2])
+  }
+
+  if (!identical(dim(.data$matrix), original_dim)) {
+    stop(
+      "fn must return values with the same dimensions as the input.\n",
+      "  Expected: ", original_dim[1], " x ", original_dim[2], "\n",
+      "  Got: ", dim(.data$matrix)[1], " x ", dim(.data$matrix)[2],
+      call. = FALSE
+    )
+  }
+
+  dimnames(.data$matrix) <- original_dimnames
+
+  # Remove stored analyses since matrix values changed
+  .data <- remove_all_analyses(.data, "transform_matrix")
+
+  .data
+}
+
 #' Add statistics to metadata
 #'
 #' Compute statistics for the active dimension and add them as columns to
