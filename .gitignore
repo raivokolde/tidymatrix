@@ -3,6 +3,12 @@
 .RData
 .Ruserdata
 *.Rproj
+.DS_Store
 vignettes/*.R
 vignettes/*.html
+Rplots.pdf
 tests/testthat/Rplots.pdf
+design/
+examples/
+IMPLEMENTATION_SUMMARY.md
+SESSION_SUMMARY.md
